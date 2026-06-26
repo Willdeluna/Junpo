@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Bloom · Build your bouquet</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%23e87aa6'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ffd34d'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#e87aa6">
+
+<style>
+  :root{
+    --bg:#efe9dd; --bg2:#e3ddcf; --ink:#2f2a22; --muted:#7c7466;
+    --brand:#c4622f; --brand2:#e07a3c; --gold:#c9a24a; --card:#fbf8f1;
+    --line:rgba(60,45,25,.14); --good:#3f7d4f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink)}
+  #app{display:flex;flex-direction:column;height:100dvh}
+  /* ---- stage ---- */
+  #stage{position:relative;flex:1 1 auto;min-height:46vh;background:
+    radial-gradient(120% 90% at 50% 18%,#fbf7ee 0%,#e9e2d3 60%,#ddd5c4 100%)}
+  #c{display:block;width:100%;height:100%;touch-action:none;position:relative;z-index:1}
+  #frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:0;display:none;pointer-events:none;box-shadow:0 12px 44px rgba(0,0,0,.25)}
+  .ownSh{flex:1;border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px;font-size:11px;cursor:pointer}
+  .ownSh.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  #title{position:absolute;top:calc(10px + env(safe-area-inset-top));left:0;right:0;text-align:center;
+    pointer-events:none}
+  #title b{font-style:italic;font-weight:600;font-size:19px;letter-spacing:.3px;color:#574a36}
+  #title span{display:block;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+  #spin{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;
+    gap:12px;color:var(--muted);font-size:13px;pointer-events:none}
+  #spin.on{display:flex}
+  .ring{width:34px;height:34px;border-radius:50%;border:3px solid rgba(0,0,0,.12);border-top-color:var(--brand);
+    animation:sp 0.9s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .sparkle{position:absolute;z-index:8;pointer-events:none;transform:translate(-50%,-50%) scale(0);color:#ffe9a8;
+    text-shadow:0 0 6px rgba(255,221,120,.95),0 0 13px rgba(255,200,90,.6);animation:spk 1.05s ease-out forwards;will-change:transform,opacity}
+  @keyframes spk{0%{transform:translate(-50%,-50%) scale(0) rotate(0deg);opacity:0}22%{opacity:1}
+    55%{transform:translate(-50%,-50%) scale(1.3) rotate(45deg);opacity:1}100%{transform:translate(-50%,-50%) scale(.35) rotate(90deg);opacity:0}}
+  .sparkle.weld{color:#fff;text-shadow:0 0 6px #ffe07a,0 0 13px #ffae3a,0 0 22px #ff7a1a}
+  .sparkle.rain{animation:spkrain 1.9s ease-in forwards}
+  @keyframes spkrain{0%{transform:translate(-50%,-50%) scale(.5);opacity:0}15%{opacity:1}100%{transform:translate(-50%,calc(-50% + var(--fall,200px))) scale(.5) rotate(40deg);opacity:0}}
+  #favBtn.beat{animation:btnbeat .85s ease-out;color:#e8557a;border-color:#e8557a}
+  @keyframes btnbeat{0%{transform:scale(1)}14%{transform:scale(1.55)}30%{transform:scale(1.15)}46%{transform:scale(1.45)}62%{transform:scale(1)}100%{transform:scale(1)}}
+  #tools{position:absolute;top:calc(10px + env(safe-area-inset-top));left:12px;display:flex;flex-direction:column;gap:8px;z-index:5}
+  #brandLogo{position:absolute;top:calc(8px + env(safe-area-inset-top));right:12px;width:78px;height:78px;background:rgba(255,255,255,.9);border-radius:15px;overflow:hidden;box-shadow:0 2px 11px rgba(0,0,0,.16);z-index:7;cursor:pointer;-webkit-user-select:none;user-select:none}
+  #brandLogo img{width:136%;height:136%;margin:-18%;object-fit:contain;display:block;pointer-events:none}
+  #rtTools{position:absolute;top:calc(94px + env(safe-area-inset-top));right:12px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:7}
+  #rtTools button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.85);color:#6a6051;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  #createDone{display:none;position:absolute;bottom:62px;right:14px;z-index:8;align-items:center;gap:6px;border:none;border-radius:22px;background:linear-gradient(180deg,#82b187,#4f7b55);color:#fff;font-size:15px;font-weight:700;padding:10px 22px;cursor:pointer;box-shadow:0 4px 16px rgba(60,100,60,.4)}
+  #createDone:active{transform:translateY(1px)}
+  #fsBtn{position:absolute;bottom:14px;right:14px;z-index:8;border:none;border-radius:22px;background:rgba(38,36,42,.82);color:#fff;font-size:13px;font-weight:700;padding:9px 15px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);display:inline-flex;align-items:center;gap:6px}
+  #fsBtn:active{transform:translateY(1px)}
+  #fsGen{display:none;position:absolute;bottom:14px;left:14px;z-index:8;border:none;border-radius:22px;background:rgba(38,36,42,.82);color:#fff;font-size:13px;font-weight:700;padding:9px 15px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);align-items:center;gap:6px}
+  #fsGen:active{transform:translateY(1px)}
+  #app.immersive #panel{display:none}
+  #app.immersive #suggest{display:none}
+  #app.immersive #fsGen{display:inline-flex}   /* generate-this-bouquet button only in full view */
+  #tools button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.85);color:#6a6051;
+    font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  #tools button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  #rotBtn.off{background:var(--brand);color:#fff;border-color:var(--brand)}
+  #selBar{display:none;align-items:center;position:absolute;left:50%;bottom:12px;transform:translateX(-50%);gap:6px}
+  #selBar button{border:none;border-radius:20px;font-size:14px;font-weight:600;padding:10px 14px;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.3);background:#5b6b8a;color:#fff}
+  #gizmo{position:absolute;inset:0;display:none;z-index:55;pointer-events:none}
+  #gizmo .gzb{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;width:36px;height:36px;border:none;border-radius:50%;
+    background:rgba(91,107,138,.92);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,.35);-webkit-user-select:none;user-select:none;touch-action:none}
+  #gizmo .gzb:active{background:#e07a3c}
+  #gizmo .gzb.mid{background:rgba(122,138,168,.95);font-weight:700}
+  #gizmo .gzb.del{background:rgba(170,51,51,.95)}
+  #gizmo .gzb.dup{background:rgba(74,140,90,.95);font-size:18px}
+  #gizmo .gzb.col{background:rgba(150,110,60,.95);font-size:16px}
+  #suggest{position:absolute;inset:0;pointer-events:none;z-index:6}
+  .sugWrap{position:absolute;top:63%;width:66px;pointer-events:none;transform:translateY(-50%)}   /* low enough to clear the left toolbar on narrow screens; left/right set inline */
+  .sugg{position:relative;display:block;pointer-events:auto;width:66px;height:66px;border-radius:50%;border:2px solid rgba(255,255,255,.95);background:#e9e2d3 center/cover no-repeat;box-shadow:0 3px 12px rgba(0,0,0,.32);cursor:pointer;padding:0}
+  .sugg.pop{animation:suggIn .3s ease-out}   /* only when a new flower appears in this slot */
+  .sugg .pl{position:absolute;right:-3px;bottom:-3px;width:25px;height:25px;border-radius:50%;background:var(--brand);color:#fff;font-size:17px;font-weight:700;line-height:24px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .sugAr{position:absolute;top:50%;transform:translateY(-50%);pointer-events:auto;width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.95);background:#7c7163;color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;padding:0;z-index:2}
+  .sugWrap.l .sugAr{right:-14px}   /* arrow on the inner side, toward the bouquet */
+  .sugWrap.r .sugAr{left:-14px;transform:translateY(-50%) scaleX(-1)}
+  .nm2{position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10.5px;font-weight:600;color:#5a4a36;background:rgba(255,255,255,.92);padding:2px 8px;border-radius:9px;box-shadow:0 1px 4px rgba(0,0,0,.15);pointer-events:none}
+  @keyframes suggIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+  /* On a wide / expanded window the "Add flower" round icons get much bigger and pull in from the edges */
+  @media (min-width:760px){
+    .sugWrap{width:128px;top:54%}
+    .sugg{width:128px;height:128px;border-width:3px}
+    .sugg .pl{width:42px;height:42px;font-size:28px;line-height:40px;right:-4px;bottom:-4px}
+    .sugAr{width:40px;height:40px;font-size:22px}
+    .sugWrap.l .sugAr{right:-20px}
+    .sugWrap.r .sugAr{left:-20px}
+    .nm2{font-size:14.5px;padding:4px 14px;border-radius:12px;top:calc(100% + 9px)}
+    .sugWrap.l{left:8% !important}
+    .sugWrap.r{right:8% !important}
+  }
+  @media (min-width:1200px){
+    .sugWrap{width:160px}
+    .sugg{width:160px;height:160px}
+    .sugg .pl{width:48px;height:48px;font-size:32px;line-height:46px}
+    .sugAr{width:46px;height:46px;font-size:26px}
+    .sugWrap.l .sugAr{right:-23px}
+    .sugWrap.r .sugAr{left:-23px}
+    .nm2{font-size:16px}
+    .sugWrap.l{left:12% !important}
+    .sugWrap.r{right:12% !important}
+  }
+  /* Two big mode pills. Inactive = outlined/muted; active = filled (Explore = pink, Edit = green) so the live mode is obvious */
+  .explore{border:2px solid var(--line);background:#fff;color:var(--muted);border-radius:22px;font-size:15px;font-weight:800;letter-spacing:.3px;padding:10px 20px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,box-shadow .15s,border-color .15s}
+  .explore:active{transform:translateY(1px)}
+  #exploreBtn.on{border-color:transparent;background:var(--brand);color:#fff;box-shadow:0 4px 14px rgba(200,90,140,.4)}
+  #editBtn.on{border-color:transparent;background:linear-gradient(180deg,#82b187,#4f7b55);color:#fff;box-shadow:0 4px 14px rgba(60,100,60,.35)}
+  #delBtn{background:#b8463a}
+  .pvqty input{width:74px;font-size:24px;font-weight:700;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 4px}
+  /* ---- controls ---- */
+  #panel{flex:0 0 auto;background:var(--card);border-top:1px solid var(--line);
+    box-shadow:0 -10px 30px rgba(0,0,0,.08);padding:10px 12px calc(8px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;gap:9px;max-height:46vh;overflow-x:hidden;overflow-y:auto}   /* x:hidden so colour swatches WRAP to the panel width on narrow screens instead of running off the right edge */
+  #adjust summary,#picker summary{cursor:pointer;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--brand);
+    list-style:none;padding:4px 0;font-weight:600}
+  #adjust summary::-webkit-details-marker,#picker summary::-webkit-details-marker{display:none}
+  #adjust summary::before,#picker summary::before{content:'▸ ';font-size:10px}
+  #adjust[open] summary::before,#picker[open] summary::before{content:'▾ '}
+  #colorBar{display:none;position:absolute;left:0;right:0;bottom:0;z-index:60;
+    flex-wrap:wrap;justify-content:center;gap:9px;
+    max-height:50vh;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    background:rgba(255,255,255,.98);padding:12px 14px calc(14px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0;
+    box-shadow:0 -8px 26px rgba(0,0,0,.22);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  #colorBar.on{display:flex}
+  #colorBar::-webkit-scrollbar{width:0;display:none}
+  .cswHead{width:100%;display:flex;align-items:center;justify-content:space-between;margin:-2px 2px 2px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .cswDone{border:none;background:var(--brand);color:#fff;border-radius:14px;font-size:12px;font-weight:700;padding:6px 16px;cursor:pointer}
+  .csw{width:30px;height:30px;flex:0 0 auto;border-radius:50%;border:2px solid rgba(0,0,0,.18);cursor:pointer;padding:0}
+  .csw:active{transform:scale(.9)}
+  .csw.sel{border-color:var(--brand);box-shadow:0 0 0 3px rgba(232,122,166,.55)}
+  /* flower detail preview */
+  #preview{position:fixed;inset:0;background:rgba(20,16,10,.6);display:none;align-items:center;justify-content:center;z-index:55}
+  #preview.on{display:flex}
+  #owner{position:fixed;top:0;left:0;bottom:0;width:312px;max-width:84vw;background:rgba(251,248,241,.97);display:none;z-index:70;overflow:auto;box-shadow:4px 0 26px rgba(0,0,0,.3)}
+  #favsModal{position:fixed;inset:0;background:rgba(150,185,160,.5);display:none;align-items:center;justify-content:center;z-index:75;padding:18px}
+  #favsModal.on{display:flex}
+  .favCard{background:#e9f6ea;border-radius:32px;padding:22px;width:100%;max-width:640px;max-height:88vh;overflow:auto;box-shadow:0 24px 70px rgba(40,70,50,.35)}
+  .favHead{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:17px;margin-bottom:14px;color:#2f5a3e}
+  #favsGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+  .favItem{position:relative;border:none;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 5px 16px rgba(40,70,50,.14)}
+  .favThumb{width:100%;height:150px;object-fit:cover;cursor:pointer;display:block;background:#eef6ee}
+  .favCap{font-size:13px;padding:8px;text-align:center;color:#3a4a3f}
+  .favDel{position:absolute;top:6px;right:6px;width:26px;height:26px;border:none;border-radius:50%;background:rgba(255,255,255,.85);color:#c33;cursor:pointer;font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  #occModal{position:fixed;inset:0;background:rgba(150,185,160,.5);display:none;align-items:center;justify-content:center;z-index:76;padding:18px}
+  #occModal.on{display:flex}
+  .occCard{background:#fff;border-radius:28px;padding:20px;width:100%;max-width:460px;max-height:88vh;overflow:auto;box-shadow:0 22px 60px rgba(40,70,50,.3)}
+  #occGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .occItem{border:1px solid var(--line);border-radius:16px;padding:16px 10px;font-size:15px;font-weight:600;background:#faf7f1;cursor:pointer;text-align:center;color:#4a3f33}
+  .occItem:active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  #bqWrap{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:4px 0 8px;min-height:48px}
+  #exploreBtn{justify-self:start;grid-column:1}
+  #bqName{grid-column:2}
+  #editBtn{justify-self:end;grid-column:3}
+  #sigPhotosBtn{grid-column:1 / -1}
+  @media (max-width:560px){
+    #bqWrap{grid-template-columns:1fr 1fr;column-gap:8px;row-gap:6px}
+    #exploreBtn{justify-self:start;grid-column:1;grid-row:1}
+    #editBtn{justify-self:end;grid-column:2;grid-row:1}
+    #bqName{grid-column:1 / -1;grid-row:2;justify-self:center}
+  }
+  #sigPhotosBtn{display:none;width:fit-content;margin:6px auto 0;background:#fff;border:1px solid var(--line);border-radius:18px;padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--brand);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+  #photoBox{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;z-index:90;align-items:flex-start;justify-content:center;overflow:auto}
+  #photoBox.on{display:flex}
+  .pbInner{width:100%;max-width:680px;padding:16px;position:relative}
+  #photoClose{position:fixed;top:12px;right:14px;background:rgba(255,255,255,.92);border:none;border-radius:50%;width:36px;height:36px;font-size:17px;cursor:pointer;z-index:2}
+  .pbNote{color:#ddd;font-size:12px;text-align:center;margin:4px 0 12px}
+  #photoStrip{display:flex;flex-direction:column;gap:14px}
+  .pbImg{width:100%;border-radius:16px;display:block;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+  #bqName{display:none;padding:9px 20px;border-radius:24px;font-size:17px;font-weight:700;line-height:1.15;letter-spacing:.2px;box-shadow:0 5px 18px rgba(0,0,0,.32)}
+  #bqName.on{display:inline-block}
+  #bqName.bur{background:linear-gradient(135deg,#5a1b2d,#330a17);color:#fbe7ec}
+  #bqName.gold{background:linear-gradient(135deg,#f3d680 0%,#d4a73a 55%,#b9842a 100%);color:#3a2c08;box-shadow:0 5px 18px rgba(190,150,50,.55)}
+  #bqName .sigtag{display:block;font-size:10px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;opacity:.78;margin-bottom:1px}
+  #bqName .bqby{display:block;font-size:10.5px;font-weight:600;font-style:italic;opacity:.82;margin-top:2px}
+  #owner.on{display:block}
+  .ownCard{padding:16px}
+  .ownCard h3{margin:0 0 8px;font-style:italic}
+  #ownBackdrops{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+  .ownBd{width:48px;height:32px;border-radius:8px;border:2px solid transparent;cursor:pointer;padding:0}
+  .ownBd.on{border-color:var(--brand)}
+  .ownChk{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin:8px 0}
+  .ownSld{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+  .ownSld span{width:74px;color:var(--muted)}
+  .ownSld input[type=range]{flex:1;accent-color:var(--brand)}
+  .ownSld input[type=color]{width:42px;height:26px;border:1px solid var(--line);border-radius:6px;padding:0;cursor:pointer;background:none}
+  #ownFlowers label{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--line)}
+  .ownActs{display:flex;gap:8px;margin-top:14px}
+  .ownActs button{flex:1;border:none;border-radius:11px;padding:11px;font-size:14px;font-weight:600;cursor:pointer}
+  #ownExport{background:#e7e0d2;color:#3a3128}
+  #ownDone{background:var(--brand);color:#fff}
+  .pvcard{background:var(--card);border-radius:20px;padding:22px;width:84%;max-width:340px;text-align:center;box-shadow:0 14px 50px rgba(0,0,0,.4)}
+  .pvrow{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px}
+  .pvarr{flex:0 0 auto;width:40px;height:64px;border:none;border-radius:14px;background:rgba(60,45,25,.07);color:var(--brand);font-size:32px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .pvarr:active{background:rgba(60,45,25,.16)}
+  .pvimg{width:200px;height:200px;border-radius:50%;margin:0 auto;background:#fff;background-size:cover;background-position:center;box-shadow:0 3px 14px rgba(0,0,0,.22)}
+  .pvcard h3{margin:4px 0 2px;font-style:italic}
+  .pvprice{color:var(--muted);font-size:13px;margin-bottom:14px}
+  .pvqty{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:16px}
+  .pvqty button{width:46px;height:46px;border-radius:50%;border:none;background:var(--brand);color:#fff;font-size:24px;cursor:pointer}
+  .pvqty span{font-size:24px;font-weight:700;min-width:30px}
+  #pvClose{border:none;border-radius:12px;background:#eee5d4;color:#6a6051;font-size:15px;font-weight:600;padding:12px 28px;cursor:pointer}
+  .row{display:flex;gap:8px;align-items:center}
+  .lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0 2px 1px}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  .chip{position:relative;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;padding:2px}
+  .sw{width:90px;height:90px;border-radius:50%;border:1.5px solid rgba(0,0,0,.5);box-shadow:0 1px 6px rgba(0,0,0,.22);
+    display:flex;align-items:center;justify-content:center;font-size:34px;background:#fff;background-size:cover;background-position:center;transition:transform .1s,border-color .12s}
+  .chip:active .sw{transform:scale(.92)}
+  .chip.on .sw{border-color:var(--brand)}
+  .chip.on .nm{color:var(--brand);font-weight:600}
+  .nm{font-size:10.5px;color:var(--muted);max-width:62px;text-align:center;line-height:1.1}
+  .chip .tick{position:absolute;top:2px;right:8px;width:20px;height:20px;border-radius:50%;
+    background:var(--brand);color:#fff;font-size:12px;display:none;align-items:center;justify-content:center}
+  .chip.on .tick{display:flex}
+  .chip .count{position:absolute;top:-2px;right:4px;min-width:22px;height:22px;padding:0 5px;border-radius:11px;
+    background:var(--brand);color:#fff;font-size:12px;font-weight:700;display:none;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+  .chip.has .count{display:flex}
+  .chip .minus{position:absolute;top:-2px;left:4px;width:22px;height:22px;border-radius:50%;
+    background:#8a7a66;color:#fff;font-size:17px;font-weight:700;line-height:1;display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+  .chip.has .minus{display:flex}
+  .nm{max-width:84px}
+  /* size segmented */
+  .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{flex:1;border:none;background:transparent;padding:8px 0;font-size:13px;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--brand);color:#fff;font-weight:600}
+  /* generate + price bar */
+  #gen{flex:1;border:none;border-radius:13px;background:linear-gradient(180deg,var(--brand2),var(--brand));
+    color:#fff;font-size:16px;font-weight:700;padding:14px;cursor:pointer;letter-spacing:.3px;
+    box-shadow:0 4px 14px rgba(196,98,47,.35);display:flex;align-items:center;justify-content:center;gap:8px}
+  #gen:active{transform:translateY(1px)}
+  #occBtn,#createBtn{flex:1;border:none;border-radius:13px;color:#fff;font-size:15px;font-weight:700;padding:13px;cursor:pointer;letter-spacing:.3px;display:flex;align-items:center;justify-content:center;gap:6px}
+  #occBtn{background:linear-gradient(180deg,#dabb66,#bb8f3a);box-shadow:0 4px 12px rgba(170,130,40,.34)}
+  #createBtn{background:linear-gradient(180deg,#82b187,#5d8b62);box-shadow:0 4px 12px rgba(80,120,80,.3)}
+  #occBtn:active,#createBtn:active{transform:translateY(1px)}
+  #createBtn.on{background:linear-gradient(180deg,#4f7b55,#3c6343)}
+  #price{flex:0 0 auto;text-align:right;min-width:96px}
+  #price .amt{font-size:22px;font-weight:700;color:var(--ink);line-height:1}
+  #price .sub{font-size:10px;color:var(--muted)}
+  #reserve{width:100%;border:none;border-radius:13px;background:#26331f;color:#f2ead7;font-size:15px;font-weight:600;
+    padding:13px;cursor:pointer}
+  #reserve:active{transform:translateY(1px)}
+  /* order modal */
+  #ord{position:fixed;inset:0;background:rgba(20,16,10,.55);display:none;align-items:flex-end;z-index:50}
+  #ord.on{display:flex}
+  .sheet{background:var(--card);width:100%;border-radius:18px 18px 0 0;padding:18px 18px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 40px rgba(0,0,0,.3);animation:up .22s ease}
+  @keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+  .sheet h3{margin:0 0 10px;font-style:italic}
+  .lineitem{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .lineitem.total{border:none;font-weight:700;font-size:17px;padding-top:10px}
+  .sheet input{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;font-size:15px;margin-top:10px}
+  .sheet .acts{display:flex;gap:8px;margin-top:14px}
+  .sheet .acts button{flex:1;border:none;border-radius:11px;padding:13px;font-size:15px;font-weight:600;cursor:pointer}
+  #ordCancel{background:#eee5d4;color:#6a6051}
+  #ordPlace{background:var(--good);color:#fff}
+  #done{text-align:center;padding:8px 0}
+  #done .big{font-size:40px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <div id="frame"></div>
+    <canvas id="c"></canvas>
+    <div id="brandLogo"><img src="logo.png" alt="Junpo" draggable="false"></div>
+    <div id="rtTools">
+      <button id="favBtn" title="Save to favorites">&#9825;</button>
+      <button id="favsBtn" title="Saved bouquets">&#9776;</button>
+    </div>
+    <button id="createDone">✓ Done</button>
+    <button id="fsBtn" title="See the bouquet full screen">⛶ Full view</button>
+    <button id="fsGen" title="Shuffle this bouquet">✦ Generate</button>
+    <div id="spin"><div class="ring"></div><div id="spinTxt">Gathering flowers&hellip;</div></div>
+    <div id="tools">
+      <button id="undoBtn" title="Go back (undo)">&#8617;</button>
+      <button id="rotBtn" title="Spin">&#10227;</button>
+      <button id="vaseBtn" title="Vase"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="pointer-events:none"><path d="M7 3C10 4.2 14 4.2 17 3C16.2 5 15.2 6.2 14.5 7.2C18.5 10 18.8 16 15.5 19.2C13.8 20.8 10.2 20.8 8.5 19.2C5.2 16 5.5 10 9.5 7.2C8.8 6.2 7.8 5 7 3Z"/></svg></button>
+      <button id="shareBtn" title="Share this bouquet"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="pointer-events:none"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></button>
+    </div>
+    <div id="colorBar"></div>
+    <div id="suggest"></div>
+    <div id="selBar">
+      <button id="leftBtn" title="Left">◀</button><button id="upBtn" title="Raise">⬆</button><button id="downBtn" title="Lower">⬇</button><button id="rightBtn" title="Right">▶</button>
+      <button id="fwdBtn" title="Forward">Front</button><button id="backBtn" title="Back">Back</button>
+      <button id="delBtn" title="Remove">🗑</button>
+    </div>
+    <div id="gizmo">
+      <button class="gzb mid" data-g="big" title="Bigger">＋</button>
+      <button class="gzb" data-g="up" title="Up">▲</button>
+      <button class="gzb" data-g="spinL" title="Spin left">↺</button>
+      <button class="gzb" data-g="spinR" title="Spin right">↻</button>
+      <button class="gzb" data-g="left" title="Left">◀</button>
+      <button class="gzb" data-g="right" title="Right">▶</button>
+      <button class="gzb" data-g="tiltL" title="Tilt left">⤿</button>
+      <button class="gzb" data-g="tiltR" title="Tilt right">⤾</button>
+      <button class="gzb" data-g="down" title="Down">▼</button>
+      <button class="gzb mid" data-g="small" title="Smaller">−</button>
+      <button class="gzb" data-g="front" title="Toward you">⤓</button>
+      <button class="gzb" data-g="back" title="Away">⤒</button>
+      <button class="gzb dup" data-g="dup" title="Duplicate">⧉</button>
+      <button class="gzb col" data-g="color" title="Colour">🎨</button>
+      <button class="gzb del" data-g="del" title="Remove">🗑</button>
+    </div>
+  </div>
+  <div id="panel">
+    <div id="bqWrap"><button id="exploreBtn" class="explore on" title="Explore = surprise me: random flowers, wrapper or vase, to your budget.">🎲 Explore: ON</button><span id="bqName"></span><button id="editBtn" class="explore" title="Edit = change this bouquet: select, move, recolour, add or remove flowers.">✏️ Edit: OFF</button><button id="sigPhotosBtn">📷 Real photos</button></div>
+    <div id="createPanel" style="display:none">
+    <details id="picker" open>
+      <summary>Flowers</summary>
+      <div>
+        <div class="lbl" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Tap to add flowers</span>
+          <button id="clearBtn" style="border:none;background:none;color:var(--brand);font-size:11px;letter-spacing:.5px;cursor:pointer;text-transform:uppercase">Clear</button>
+        </div>
+        <div class="chips" id="flowers"></div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="lbl">One-click bouquet</div>
+        <div class="seg" id="presets">
+          <button data-n="12">Dozen</button>
+          <button data-n="24">2 Dozen</button>
+          <button data-n="50">50 Roses</button>
+        </div>
+      </div>
+      <div class="lbl" style="margin-top:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.65">Customize</div>
+      <div style="margin-top:6px">
+        <div class="lbl">Wrapper</div>
+        <div class="chips" id="wraps"></div>
+      </div>
+      <div style="margin-top:6px"><div class="lbl">Wrapper colour</div><div id="wrapColors" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px"></div></div>
+      <div style="margin-top:6px"><div class="lbl">Bow</div><div id="bowPicker" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px"></div></div>
+      <div style="margin-top:6px"><div class="lbl">Bow colour</div><div id="bowColors" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px"></div></div>
+    </details>
+    <details id="adjust" open>
+      <summary>Adjust look</summary>
+      <div class="row" style="gap:14px;margin-top:6px">
+        <label style="flex:1"><div class="lbl">Bloom size</div><input type="range" id="bsize" min="0.6" max="1.8" step="0.02" value="1" style="width:100%;accent-color:var(--brand)"></label>
+        <label style="flex:1"><div class="lbl">Sit in wrapper</div><input type="range" id="blift" min="-1.1" max="1.2" step="0.02" value="0" style="width:100%;accent-color:var(--brand)"></label>
+      </div>
+      <div class="row" style="gap:14px">
+        <label style="flex:1"><div class="lbl">Bunch angle</div><input type="range" id="bunch" min="0" max="1.5" step="0.02" value="0.9" style="width:100%;accent-color:var(--brand)"></label>
+        <label style="flex:1"><div class="lbl">Stem length</div><input type="range" id="stemlen" min="0.6" max="2" step="0.02" value="1" style="width:100%;accent-color:var(--brand)"></label>
+      </div>
+    </details>
+    </div>
+    <div class="row" id="budgetRow" style="align-items:center;gap:10px;margin-top:4px">
+      <span class="lbl" style="margin:0;flex:0 0 auto">💰 Budget</span>
+      <input type="range" id="budget" min="15" max="150" step="5" value="45" style="flex:1;accent-color:var(--brand)">
+      <span id="budgetVal" style="font-weight:700;min-width:46px;text-align:right;color:var(--brand)">$45</span>
+    </div>
+    <div class="row" id="vaseCtl" style="display:none;align-items:center;gap:8px;margin-top:8px">
+      <span class="lbl" style="margin:0;flex:0 0 auto">Vase</span>
+      <span class="lbl" style="margin:0">Width</span><input type="range" id="vaseW" min="0.7" max="1.6" step="0.05" value="1" style="flex:1;accent-color:var(--brand)">
+      <span class="lbl" style="margin:0">Height</span><input type="range" id="vaseH" min="0.6" max="1.5" step="0.05" value="1" style="flex:1;accent-color:var(--brand)">
+    </div>
+    <div class="row" style="gap:8px;margin-top:10px">
+      <button id="occBtn" style="flex:1">🎉 Occasions</button>
+      <button id="createBtn" style="flex:1">✎ Create your own</button>
+    </div>
+    <div class="row" style="gap:8px;margin-top:6px">
+      <button id="gen" style="flex:1">&#10022; Generate</button>
+      <button id="reserve" style="flex:1;width:auto">Order</button>
+    </div>
+  </div>
+</div>
+
+<div id="ord">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div id="preview"><div class="pvcard" id="pvcard"></div></div>
+<div id="occModal"><div class="occCard">
+  <div class="favHead"><span>What's the occasion?</span><button id="occClose" class="ownSh" style="flex:0 0 auto;width:auto;padding:6px 12px">Close</button></div>
+  <div id="occGrid"></div>
+</div></div>
+<div id="photoBox"><div class="pbInner"><button id="photoClose">✕</button><div class="pbNote">Real arrangements by this shop · actual flowers may vary slightly with season</div><div id="photoStrip"></div></div></div>
+<div id="favsModal"><div class="favCard">
+  <div class="favHead"><span>Saved bouquets — compare &amp; pick</span><button id="favsClose" class="ownSh" style="flex:0 0 auto;width:auto;padding:6px 12px">Done</button></div>
+  <div id="favsGrid"></div>
+</div></div>
+<div id="owner"><div class="ownCard">
+  <h3>Shop settings <span style="font-size:11px;color:var(--muted);font-style:normal">— owner</span></h3>
+  <div class="ownSld"><span>Shop name</span><input type="text" id="ownShopName" placeholder="e.g. Junpo Flowers" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px"></div>
+  <div class="lbl" style="font-size:10px;opacity:.65;margin:-4px 0 8px">Shows as “✦ by …” on your signature bouquets (re-save signatures to apply)</div>
+  <div class="lbl">Backdrop</div>
+  <div id="ownBackdrops"></div>
+  <div class="ownSld"><span>Custom</span><input type="color" id="ownBdCustom"><button id="ownBdClear" style="border:none;background:none;color:var(--brand);font-size:11px;cursor:pointer">use preset</button></div>
+  <div class="ownSld"><span>Image</span><input type="file" id="ownBdImg" accept="image/*" style="flex:1;font-size:11px;min-width:0"><button id="ownBdImgClear" style="border:none;background:none;color:var(--brand);font-size:11px;cursor:pointer">clear</button></div>
+  <button id="ownBdDownload" style="width:100%;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px;font-size:11.5px;cursor:pointer;margin:2px 0">⬇ Save uploaded image for /backgrounds</button>
+  <div class="lbl" style="font-size:10px;opacity:.65;margin-top:2px">Saved backgrounds (tap to use)</div>
+  <div id="ownBgList" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px"></div>
+  <div class="ownSld"><span>Dim</span><input type="range" id="ownDim" min="0" max="0.8" step="0.02"></div>
+  <label class="ownChk"><input type="checkbox" id="ownSpot"> Spotlight glow</label>
+  <div class="lbl" style="margin-top:10px">Lighting &amp; shadow</div>
+  <div class="ownSld"><span>Brightness</span><input type="range" id="ownBright" min="0.6" max="1.7" step="0.02"></div>
+  <div class="ownSld"><span>Warmth</span><input type="range" id="ownWarm" min="-1" max="1" step="0.05"></div>
+  <div class="ownSld"><span>Ambient</span><input type="range" id="ownAmb" min="0.4" max="1.6" step="0.02"></div>
+  <div class="ownSld"><span>Light angle</span><input type="range" id="ownAngle" min="0" max="6.28" step="0.05"></div>
+  <div class="ownSld"><span>Shadow</span><input type="range" id="ownShadow" min="0" max="0.7" step="0.02"></div>
+  <div class="lbl" style="margin-top:12px">Frame behind bouquet</div>
+  <label class="ownChk"><input type="checkbox" id="ownFrame"> Show frame</label>
+  <div class="ownSld"><span>Shape</span><span id="ownFrameShape" style="display:flex;gap:4px;flex:1"><button data-s="oval" class="ownSh">Oval</button><button data-s="rounded" class="ownSh">Rounded</button><button data-s="square" class="ownSh">Square</button></span></div>
+  <div class="ownSld"><span>Colour</span><input type="color" id="ownFrameColor"></div>
+  <div class="ownSld"><span>Size</span><input type="range" id="ownFrameSize" min="0.4" max="1" step="0.02"></div>
+  <div class="ownSld"><span>Opacity</span><input type="range" id="ownFrameOp" min="0.1" max="1" step="0.02"></div>
+  <div class="lbl" style="margin-top:10px">Sound for your signature bouquets <span style="opacity:.6">— pick one or several (customers hear chimes by default)</span></div>
+  <div id="ownSound" style="display:flex;gap:4px;flex-wrap:wrap"><button data-fx="off" class="ownSh">Off</button><button data-fx="chime" class="ownSh">Chimes</button><button data-fx="harp" class="ownSh">Harp ↑</button><button data-fx="harpdown" class="ownSh">Harp ↓</button><button data-fx="harproll" class="ownSh">Harp chord</button><button data-fx="musicbox" class="ownSh">Music box</button></div>
+  <div class="lbl" style="margin-top:10px">Twinkle effect for signatures</div>
+  <div id="ownSparkle" style="display:flex;gap:4px;flex-wrap:wrap"><button data-sp="burst" class="ownSh">Burst</button><button data-sp="frame" class="ownSh">Frame ✨</button><button data-sp="rain" class="ownSh">Rain</button><button data-sp="off" class="ownSh">Off</button></div>
+  <div class="lbl" style="margin-top:12px">Flowers offered to customers</div>
+  <div id="ownFlowers"></div>
+  <div class="lbl" style="margin-top:12px">Publish to site <span style="opacity:.6">— updates all devices</span></div>
+  <input id="ghRepo" placeholder="your-username/your-repo" autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px;margin:3px 0">
+  <input id="ghToken" type="password" placeholder="GitHub token (Contents: write)" autocomplete="off" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px;margin:3px 0">
+  <div style="display:flex;gap:6px"><button id="ghPublish" class="ownSh" style="flex:1">⭐ Publish background</button><button id="ghPublishAll" class="ownSh" style="flex:1">Publish all settings</button></div>
+  <div id="ghStatus" style="font-size:11px;opacity:.85;margin:4px 0;min-height:14px"></div>
+  <div style="font-size:10px;opacity:.6">One-time: make a fine-grained token at github.com → Settings → Developer settings → Fine-grained tokens, with <b>Contents: Read &amp; write</b> on this repo. It stays only on this device — never published.</div>
+  <div class="lbl" style="margin-top:12px">Florist account <span style="opacity:.6">— saves your shop to the cloud</span></div>
+  <div id="flStatus" style="font-size:11px;opacity:.85;margin:2px 0;min-height:14px"></div>
+  <div id="flLogin">
+    <input id="flEmail" type="email" placeholder="email" autocomplete="username" autocapitalize="off" spellcheck="false" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px;margin:3px 0">
+    <input id="flPass" type="password" placeholder="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px;margin:3px 0">
+    <div style="display:flex;gap:6px"><button id="flLoginBtn" class="ownSh" style="flex:1">Log in</button><button id="flSignupBtn" class="ownSh" style="flex:1">Sign up</button></div>
+  </div>
+  <div id="flAccount" style="display:none">
+    <div style="display:flex;gap:6px"><button id="flSaveBtn" class="ownSh" style="flex:1">Save shop to my account</button><button id="flLogoutBtn" class="ownSh" style="flex:0 0 auto">Log out</button></div>
+    <button id="flImgBtn" class="ownSh" style="width:100%;margin-top:4px">⬆ Save background image to cloud</button>
+    <div class="lbl" style="margin-top:10px">Signature bouquets <span style="opacity:.6">— your saved designs</span></div>
+    <div style="display:flex;gap:6px"><input id="sigName" placeholder="name (e.g. Classic Dozen)" autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px"><input id="sigPrice" type="number" min="0" placeholder="$" style="width:50px;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px"><input id="sigDeal" type="number" min="0" placeholder="deal" title="Optional sale price (a deal to move flowers fast)" style="width:52px;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px"></div>
+    <button id="sigSaveBtn" class="ownSh" style="width:100%;margin-top:4px">＋ Save current bouquet as signature</button>
+    <div id="sigStatus" style="font-size:11px;opacity:.85;margin:3px 0;min-height:13px"></div>
+    <div id="sigList" style="display:flex;flex-direction:column;gap:4px"></div>
+    <input id="sigPhotoFile" type="file" accept="image/*" multiple style="display:none">
+    <div class="lbl" style="font-size:10px;opacity:.6;margin-top:2px">📷 on a signature = add up to 3 real sample photos of your own arrangement</div>
+  </div>
+  <div class="ownActs"><button id="ownExport">Export setup</button><button id="ownDone">Done</button></div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/libs/meshopt_decoder.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/DRACOLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   Bloom - customer bouquet maker (MVP)
+   Loads the florist's wrappers + stemless flower heads from the CDN,
+   arranges a dome of heads in the wrapper opening, prices it, reserves it.
+   ============================================================ */
+const CDN='https://cdn.jsdelivr.net/gh/Willdeluna/Junkos_Flowers3@main/';
+const cdn=f=>CDN+encodeURI(f);        // florist's published library
+const local=f=>encodeURI(f);          // a .glb dropped in this folder (served over http)
+
+const WRAPPERS=[
+  {id:'natural', name:'Kraft',  src:local('wrappers/Wrapper_Bouquet.glb'),      price:6, dot:'#cdb18b'},
+  {id:'pink',    name:'Pink',   src:local('wrappers/Wrapper_Bouquet_Pink.glb'), price:7, dot:'#e7b9c4'},
+  {id:'white',   name:'White',  src:local('wrappers/Wrapper_White_Bouquet.glb'),price:7, dot:'#f3efe7'},
+  // new (2026-06-26) — fall back to the Kraft cage until tuned per-wrapper in lab.html
+  {id:'paperbq',  name:'Paper',      src:local('wrappers/paper bouquet 3d model_opt.glb'),      price:6, dot:'#d8c4a0'},
+  {id:'paperwrap',name:'Paper Wrap', src:local('wrappers/paper bouquet wrap 3d model_opt.glb'), price:6, dot:'#cdb18b'},
+  {id:'napkin',   name:'Gold Napkin',src:local('wrappers/golden napkin 3d model_opt.glb'),      price:8, dot:'#d9b65a'},
+  {id:'origami',  name:'Origami',    src:local('wrappers/green origami sculpture 3d model_opt.glb'),price:8, dot:'#6f8f5a'},
+  {id:'floralbq', name:'Floral',     src:local('wrappers/pink flower bouquet 3d model_opt.glb'), price:9, dot:'#e0a9c0'},
+];
+// Real bow meshes (separate object, dropped onto the wrapper) — chosen in the Bow picker, auto-sized to the wrapper.
+const BOWS=[
+  {id:'gold', name:'Gold', src:local('wrappers/gold satin bow 3d model_opt.glb'), dot:'#d9b65a'},
+  {id:'red',  name:'Red',  src:local('wrappers/red satin bow 3d model_opt.glb'),  dot:'#b6303a'},
+];
+// bow placement on the wrapper (front faces +x toward the camera) — tunable while we eyeball the fit
+const BOW_Y=0.20, BOW_FWD=0.45, BOW_W=1.20, BOW_ROT_Y=0, BOW_ROT_X=0;
+// Full flower+stem GLBs (stem vs. head is auto-detected at load; stems get clipped at the wrapper line).
+const FLOWERS=[
+  {id:'redrose',  name:'Red Rose',      src:local('Red Rose.glb'),        price:4, dot:'#b6303a', filler:false},
+  {id:'smallrose',name:'Small Rose',    src:local('Small Rose.glb'),      price:3, dot:'#d4536a', filler:false},
+  {id:'whiterose',name:'White Rose',    src:local('White Rose small.glb'),price:3, dot:'#efe9df', filler:false},
+  {id:'hydrangea',name:'Blue Hydrangea',src:local('blue hydrangea 2.glb'),price:5, dot:'#6f8fc4', filler:false, variants:[
+     {src:local('blue hydrangea 2.glb'), name:'Blue Hydrangea'},
+     {src:local('blue hydrangea 1.glb'),   name:'Blue Hydrangea — full'},
+     {src:local('blue hydrangea 3.glb'),   name:'Blue Hydrangea — loose'},
+     {src:local('blue hydrangea 2.glb'), name:'White Hydrangea',        color:'#eef1f5'},
+     {src:local('blue hydrangea 1.glb'),   name:'White Hydrangea — full',  color:'#eef1f5'},
+     {src:local('blue hydrangea 3.glb'),   name:'White Hydrangea — loose', color:'#eef1f5'},
+     {src:local('blue hydrangea 2.glb'), name:'Pink Hydrangea',         color:'#e87aa6'},
+     {src:local('blue hydrangea 1.glb'),   name:'Pink Hydrangea — full',   color:'#e87aa6'},
+     {src:local('blue hydrangea 3.glb'),   name:'Pink Hydrangea — loose',  color:'#e87aa6'} ]},
+  {id:'sunflower', name:'Sunflower',  src:local('sunflower.glb'), price:4, dot:'#f2b600', filler:false, faceRot:-Math.PI/2, variants:[
+     {src:local('sunflower.glb'), name:'Sunflower'},
+     {src:local('sunflower.glb'), name:'Autumn Sunflower', color:'#d2691e'},
+     {src:local('sunflower.glb'), name:'Red Sunflower',    color:'#c0392b'} ]},
+  {id:'lily',      name:'White Lily', src:local('white_lily.glb'), price:6, dot:'#efe9df', filler:false, faceRot:-Math.PI/2, variants:[
+     {src:local('white_lily.glb'), name:'White Lily'},
+     {src:local('white_lily.glb'), name:'Pink Lily',   color:'#e87aa6'},
+     {src:local('white_lily.glb'), name:'Peach Lily',  color:'#f0b07a'},
+     {src:local('white_lily.glb'), name:'Yellow Lily', color:'#e8c020'},
+     {src:local('white_lily.glb'), name:'Orange Lily', color:'#e8741e'} ]},
+  {id:'dahlia',    name:'Pink Dahlia', src:local('pink_dalia.glb'), price:5, dot:'#d96b9a', filler:false, faceRot:-Math.PI/2, variants:[
+     {src:local('pink_dalia.glb'), name:'Pink Dahlia'},
+     {src:local('pink_dalia.glb'), name:'Red Dahlia',    color:'#c0392b'},
+     {src:local('pink_dalia.glb'), name:'White Dahlia',  color:'#f4f1ea'},
+     {src:local('pink_dalia.glb'), name:'Peach Dahlia',  color:'#f0a878'},
+     {src:local('pink_dalia.glb'), name:'Purple Dahlia', color:'#8e5bb0'},
+     {src:local('pink_dalia.glb'), name:'Yellow Dahlia', color:'#e8c020'} ]},
+  {id:'peony',     name:'Pink Peony', src:local('pink_peony.glb'), price:7, dot:'#eaa0b8', filler:false, faceRot:-Math.PI/2, variants:[
+     {src:local('pink_peony.glb'), name:'Pink Peony'},
+     {src:local('pink_peony.glb'), name:'Blush Peony',    color:'#f3d3da'},
+     {src:local('pink_peony.glb'), name:'White Peony',    color:'#f4f1ea'},
+     {src:local('pink_peony.glb'), name:'Coral Peony',    color:'#f0795f'},
+     {src:local('pink_peony.glb'), name:'Burgundy Peony', color:'#7a0f3a'} ]},
+  {id:'gardenrose',name:'Garden Rose', src:local('red_rose_bloom.glb'), price:5, dot:'#b6303a', filler:false, faceRot:-Math.PI/2, variants:[
+     {src:local('red_rose_bloom.glb'), name:'Red Garden Rose'},
+     {src:local('red_rose_bloom.glb'), name:'White Garden Rose',    color:'#f4f1ea'},
+     {src:local('red_rose_bloom.glb'), name:'Pink Garden Rose',     color:'#e87aa6'},
+     {src:local('red_rose_bloom.glb'), name:'Peach Garden Rose',    color:'#f0b07a'},
+     {src:local('red_rose_bloom.glb'), name:'Yellow Garden Rose',   color:'#e8c020'},
+     {src:local('red_rose_bloom.glb'), name:'Lavender Garden Rose', color:'#b79de0'},
+     {src:local('red_rose_bloom.glb'), name:'Burgundy Garden Rose', color:'#7a0f3a'} ]},
+  {id:'baby',     name:"Baby's Breath", src:local('Babies Breathe.glb'),  price:2, dot:'#f3f3ee', filler:true},
+];
+const variantSel={};   // per-flower id → currently chosen variant src (which style/colour to add)
+// ===== SHOP SETTINGS (owner-controlled; the customer view only shows what's enabled) =====
+const BACKDROPS={
+  cream:   'radial-gradient(120% 90% at 50% 18%,#fbf7ee 0%,#e9e2d3 60%,#ddd5c4 100%)',
+  blush:   'radial-gradient(120% 90% at 50% 18%,#fceff1 0%,#f3dce0 60%,#e7ccd2 100%)',
+  sage:    'radial-gradient(120% 90% at 50% 18%,#eef2e8 0%,#dde6d6 60%,#ccd9c3 100%)',
+  slate:   'radial-gradient(120% 90% at 50% 18%,#edeef1 0%,#d8dce2 60%,#c3cad2 100%)',
+  charcoal:'radial-gradient(120% 90% at 50% 24%,#4b4b53 0%,#34343b 55%,#222228 100%)',
+  midnight:'radial-gradient(120% 90% at 50% 24%,#2b3654 0%,#1d2539 55%,#141a2a 100%)'
+};
+// ---- Supabase: florist accounts + cloud-saved shops (the public key is safe in client code) ----
+const SB_URL='https://femggwbcrunzjlsgtqoy.supabase.co';
+const SB_KEY='sb_publishable_Lrp-1lP_0cb5FCyGVE4lyg_ehxkdpci';
+let sb=null; try{ if(window.supabase&&window.supabase.createClient) sb=window.supabase.createClient(SB_URL,SB_KEY); }catch(e){}
+let flUser=null;
+async function flRefresh(){ try{ const {data}=await sb.auth.getUser(); flUser=(data&&data.user)?data.user:null; }catch(e){ flUser=null; } return flUser; }
+async function shopSaveCloud(){ if(!sb||!flUser) throw new Error('Log in first.'); const {error}=await sb.from('shops').upsert({id:flUser.id, name:shop.name||null, config:shop}); if(error) throw new Error(error.message); return true; }
+async function shopLoadCloud(){ if(!sb||!flUser) return null; const {data,error}=await sb.from('shops').select('config').eq('id',flUser.id).maybeSingle(); if(error) throw new Error(error.message); return data?data.config:null; }
+async function imageUploadCloud(dataUrl){ if(!sb||!flUser) throw new Error('Log in first.'); const blob=await (await fetch(dataUrl)).blob(); const path=flUser.id+'/background.jpg'; const {error}=await sb.storage.from('shop-images').upload(path, blob, {upsert:true, contentType:'image/jpeg'}); if(error) throw new Error(error.message); const {data}=sb.storage.from('shop-images').getPublicUrl(path); return data.publicUrl+'?t='+Date.now(); }
+// ---- Signature bouquets: a shop's saved arrangements (name + price + design) ----
+function designSnapshot(){ return {wrapper:state.wrapper,count:state.count,bloomSize:state.bloomSize,bloomLift:state.bloomLift,bunch:state.bunch,stemLen:state.stemLen,trim:state.trim,bowColor:state.bowColor,bow:state.bow,wrapColor:state.wrapColor,gather:state.gather,cuts:state.cuts,stems:state.stems}; }
+async function sigSave(name,price,sale){ if(!sb||!flUser) throw new Error('Log in first.'); const d=designSnapshot(); d.sound=(shop.soundPool||[]).slice(); d.sparkle=shop.sparkleFx||'burst'; d.shopName=shop.name||null; const row={shop_id:flUser.id,name:name,price:price,design:d}; if(sale!=null&&!isNaN(sale))row.sale_price=sale; const {error}=await sb.from('signatures').insert(row); if(error) throw new Error(error.message); }
+async function sigList(){ if(!sb||!flUser) return []; const {data,error}=await sb.from('signatures').select('*').eq('shop_id',flUser.id).order('created_at',{ascending:false}); if(error) throw new Error(error.message); return data||[]; }
+async function sigDelete(id){ if(!sb||!flUser) throw new Error('Log in first.'); const {error}=await sb.from('signatures').delete().eq('id',id); if(error) throw new Error(error.message); }
+async function sigAddPhotos(sigId, files){ if(!sb||!flUser) throw new Error('Log in first.');
+  const {data:cur}=await sb.from('signatures').select('photos').eq('id',sigId).maybeSingle();
+  let photos=(cur&&Array.isArray(cur.photos))?cur.photos.slice():[];
+  for(let i=0;i<files.length && photos.length<3;i++){
+    const dataUrl=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(files[i]); });
+    const small=await new Promise(res=>downscaleImage(dataUrl,1200,res));
+    const blob=await (await fetch(small)).blob();
+    const path=flUser.id+'/sig/'+sigId+'/'+Date.now()+'-'+i+'.jpg';
+    const {error}=await sb.storage.from('shop-images').upload(path, blob, {upsert:true, contentType:'image/jpeg'}); if(error) throw new Error(error.message);
+    photos.push(sb.storage.from('shop-images').getPublicUrl(path).data.publicUrl);
+  }
+  const {error:uerr}=await sb.from('signatures').update({photos:photos}).eq('id',sigId); if(uerr) throw new Error(uerr.message);
+  return photos; }
+function openPhotos(){ const m=document.getElementById('photoBox'), s=document.getElementById('photoStrip'); if(!m||!s)return; s.innerHTML=''; (state.sigPhotos||[]).forEach(u=>{ const img=document.createElement('img'); img.src=u; img.className='pbImg'; img.loading='lazy'; s.appendChild(img); }); m.classList.add('on'); }
+const OCCASIONS=[{id:'wedding',label:'💍 Wedding'},{id:'birthday',label:'🎂 Birthday'},{id:'anniversary',label:'❤️ Anniversary'},{id:'sympathy',label:'🕊️ Sympathy'},{id:'mothersday',label:"🌷 Mother's Day"},{id:'getwell',label:'🌼 Get Well'},{id:'romance',label:'🌹 Romance'},{id:'congrats',label:'🎉 Congrats'},{id:'thankyou',label:'💐 Thank You'},{id:'justbecause',label:'✨ Just Because'}];
+function openOccasions(){ const m=document.getElementById('occModal'), g=document.getElementById('occGrid'); if(!m||!g)return; g.innerHTML=''; OCCASIONS.forEach(o=>{ const b=document.createElement('button'); b.className='occItem'; b.textContent=o.label; b.onclick=()=>{ state.occasion=o.id; m.classList.remove('on'); toast(o.label.replace(/^\S+\s/,'')+' bouquets'); generate(); }; g.appendChild(b); }); m.classList.add('on'); }
+function setCreate(show){ const cp=document.getElementById('createPanel'), cb=document.getElementById('createBtn'), cd=document.getElementById('createDone'); if(!cp)return;
+  cp.style.display=show?'block':'none'; if(cb)cb.classList.toggle('on',show); if(cd)cd.style.display=show?'inline-flex':'none';
+  const br=document.getElementById('budgetRow'); if(br)br.style.display=show?'none':'flex';   // budget slider is for auto-generate, hidden while hand-building
+  if(show){ const pk=document.getElementById('picker'), aj=document.getElementById('adjust'); if(pk)pk.open=true; if(aj)aj.open=true;
+    pushHistory(); state.stems=[]; state.sigName=null; state.sigShop=null; state.sigPrice=null; state.sigOrig=null; state.sigPhotos=[]; _sigKey=null; afterChange();   // blank canvas
+    if(cp.scrollIntoView)cp.scrollIntoView({behavior:'smooth',block:'nearest'}); } }
+// ---- Signatures in the generator + customer favorites ----
+let cloudSignatures=[], _sigKey=null, _lastSigId=null, _sigQueue=[];
+function escHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function designKey(){ return JSON.stringify({w:state.wrapper,b:state.bowColor||'',wc:state.wrapColor||'',st:(state.stems||[]).map(s=>[s.id,s.src||'',s.color||'',Math.round((s.spin||0)*100),Math.round((s.scale||1)*100),Math.round((s.jy||0)*100),Math.round((s.jphi||0)*100)])}); }
+function activeSig(){ if(state.sigPrice!=null && _sigKey && designKey()===_sigKey) return {price:state.sigPrice, orig:state.sigOrig, name:state.sigName}; state.sigPrice=null; state.sigOrig=null; _sigKey=null; return null; }   // signature pricing holds only while the design is unchanged
+function loadSignatures(){ if(!sb)return; sb.from('signatures').select('*').order('created_at',{ascending:false}).then(r=>{ if(r&&!r.error&&r.data)cloudSignatures=r.data; }); }
+// deal a fresh signature each call — shuffled deck, never the same one twice in a row
+function nextSignature(){ const list=cloudSignatures; if(!list.length)return null;
+  if(_sigQueue.length===0)_sigQueue=list.slice().sort(()=>Math.random()-0.5);
+  if(_sigQueue.length>1 && _sigQueue[0].id===_lastSigId)_sigQueue.push(_sigQueue.shift());
+  let pick=_sigQueue.shift();
+  if(pick.id===_lastSigId && list.length>1){ const alt=list.filter(s=>s.id!==_lastSigId); pick=alt[rand(alt.length)]; }
+  _lastSigId=pick.id; return pick; }
+function applyDesign(sig){ const d=(sig&&sig.design)?sig.design:sig; if(!d)return; pushHistory();
+  if(d.wrapper)state.wrapper=d.wrapper; if(d.count)state.count=d.count;
+  if(d.bloomSize!=null)state.bloomSize=d.bloomSize; if(d.bloomLift!=null)state.bloomLift=d.bloomLift; if(d.bunch!=null)state.bunch=d.bunch; if(d.stemLen!=null)state.stemLen=d.stemLen; if(d.trim!=null)state.trim=d.trim;
+  state.bowColor=d.bowColor; state.bow=d.bow||null; state.wrapColor=d.wrapColor||null; state.gather=d.gather||null; state.cuts=d.cuts||[];
+  state.stems=(d.stems||[]).map(s=>Object.assign({},s,{uid:uidCounter++}));
+  state.sigName=(sig&&sig.name)||null;
+  state.sigShop=(d&&d.shopName)||null;
+  state.sigPhotos=(sig&&Array.isArray(sig.photos))?sig.photos:[];
+  const reg=(sig&&sig.price!=null)?sig.price:null, sale=(sig&&sig.sale_price!=null)?sig.sale_price:null;
+  state.sigPrice=(sale!=null?sale:reg); state.sigOrig=(sale!=null?reg:null); _sigKey=designKey();
+  afterChange();
+  const _spk=(d&&d.sparkle)||(shop&&shop.sparkleFx)||'burst';   // use the saved per-signature effect; fall back to the shop's current effect (older signatures predate the saved field)
+  requestAnimationFrame(()=>playSparkle(_spk));                 // wait one frame so the oval frame is laid out before we ring it with sparkles
+  const _snd=(d&&Array.isArray(d.sound))?d.sound:['chime']; if(_snd.length)playSound(_snd[(Math.random()*_snd.length)|0]);   // signature plays the OWNER's saved sound (else chimes)
+}
+let favs=[]; try{ favs=JSON.parse(localStorage.getItem('bloom_favs')||'[]'); if(!Array.isArray(favs))favs=[]; }catch(e){ favs=[]; }
+function saveFavs(){ try{ localStorage.setItem('bloom_favs',JSON.stringify(favs)); }catch(e){} }
+function updateFavCount(){ const b=document.getElementById('favsBtn'); if(b)b.title='Saved bouquets ('+favs.length+')'; }
+function addFav(){ try{ renderer.render(scene,camera); const src=renderer.domElement;
+  const cv=document.createElement('canvas'); cv.width=src.width; cv.height=src.height; const cx=cv.getContext('2d');
+  cx.fillStyle='#eef6ee'; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(src,0,0);   // composite bouquet onto mint so the JPEG isn't black
+  favs.unshift({ design:designSnapshot(), thumb:cv.toDataURL('image/jpeg',0.6), name:state.sigName||'', price:(state.sigPrice!=null?state.sigPrice:null), ts:Date.now() }); if(favs.length>30)favs.length=30; saveFavs(); toast('♥ Saved to favorites'); updateFavCount();
+  const _fb=document.getElementById('favBtn'); if(_fb){ _fb.classList.remove('beat'); void _fb.offsetWidth; _fb.classList.add('beat'); _fb.innerHTML='&#9829;'; setTimeout(()=>{ try{ _fb.classList.remove('beat'); _fb.innerHTML='&#9825;'; }catch(e){} }, 850); }
+  }catch(e){} }
+async function shareBouquet(){ try{
+  renderer.render(scene,camera); const src=renderer.domElement;
+  const cv=document.createElement('canvas'); cv.width=src.width; cv.height=src.height; const cx=cv.getContext('2d');
+  cx.fillStyle='#eef6ee'; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(src,0,0);   // composite onto mint so it isn't black
+  const name=state.sigName||'my bouquet';
+  const blob=await new Promise(res=>cv.toBlob(res,'image/jpeg',0.85)); if(!blob)return;
+  const file=new File([blob],'junpo-bouquet.jpg',{type:'image/jpeg'});
+  const text='Check out "'+name+'" — a bouquet I designed on Junpo 🌸';
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({title:'Junpo Flowers',text:text,files:[file]}); return; }
+    if(navigator.share){ await navigator.share({title:'Junpo Flowers',text:text}); return; }
+  }catch(e){ if(e&&e.name==='AbortError')return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='junpo-bouquet.jpg'; document.body.appendChild(a); a.click(); a.remove(); toast('Image saved — share it anywhere');
+}catch(e){} }
+function openFavs(){ const m=document.getElementById('favsModal'), g=document.getElementById('favsGrid'); if(!m||!g)return; g.innerHTML='';
+  if(!favs.length){ const e=document.createElement('div'); e.style.cssText='opacity:.6;padding:20px;text-align:center;grid-column:1/-1'; e.textContent='No saved bouquets yet — tap ♡ to save one you like.'; g.appendChild(e); }
+  favs.forEach((f,i)=>{ const card=document.createElement('div'); card.className='favItem';
+    const img=document.createElement('img'); img.src=f.thumb; img.className='favThumb'; img.onclick=()=>{ applyDesign({design:f.design,name:f.name,price:f.price}); m.classList.remove('on'); }; card.appendChild(img);
+    const cap=document.createElement('div'); cap.className='favCap'; cap.textContent=(f.name||'Bouquet')+((f.price!=null&&f.price!=='')?(' · $'+f.price):''); card.appendChild(cap);
+    const del=document.createElement('button'); del.className='favDel'; del.textContent='✕'; del.onclick=()=>{ favs.splice(i,1); saveFavs(); openFavs(); updateFavCount(); }; card.appendChild(del);
+    g.appendChild(card); });
+  m.classList.add('on'); }
+const DEFAULT_SHOP={ name:'Atelier Bloom', backdrop:'cream', backdropCustom:null, backdropImage:null, bgDim:0, spotlight:true, brightness:1.04, warmth:0, ambient:0.95, lightAngle:0.9, shadow:0.32,
+  frameOn:false, frameShape:'oval', frameColor:'#f3ece0', frameSize:0.7, frameOpacity:0.92, soundPool:['chime'], sparkleFx:'burst', flowers:{} };
+let _pubShop=null, _lsShop=null, shop;
+try{ _lsShop=JSON.parse(localStorage.getItem('bloom_shop')||'null'); }catch(e){}
+// precedence: defaults < published repo config (shop.json) < this device's local edits
+function mergeShop(){ shop=Object.assign({},DEFAULT_SHOP,_pubShop||{},_lsShop||{});
+  shop.flowers=Object.assign({},(_pubShop&&_pubShop.flowers)||{},(_lsShop&&_lsShop.flowers)||{});
+  const src=_lsShop||_pubShop; if(src&&src.soundFx&&!src.soundPool)shop.soundPool=(src.soundFx==='off')?[]:[src.soundFx]; }
+mergeShop();
+function saveShop(){ try{ localStorage.setItem('bloom_shop',JSON.stringify(shop)); }catch(e){} }
+// Published settings from the repo, so EVERY device/customer sees the owner's setup (background, lighting, etc.)
+fetch('shop.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(p=>{ if(!p)return; _pubShop=p; mergeShop();
+  try{ applyBackdrop(); applyLighting(); applyShadow(); applyFrame(); autoBackground(); if(typeof buildFlowerChips==='function')buildFlowerChips(); }catch(e){} }).catch(()=>{});
+function flowerOn(id){ return shop.flowers[id]!==false; }
+function shade(hex,amt){ const c=new THREE.Color(hex); c.lerp(new THREE.Color(amt>0?0xffffff:0x000000),Math.abs(amt)); return '#'+c.getHexString(); }
+function downscaleImage(durl,maxDim,cb){ const im=new Image(); im.onload=()=>{ let w=im.width,h=im.height; const s=Math.min(1,maxDim/Math.max(w,h||1)); w=Math.max(1,Math.round(w*s)); h=Math.max(1,Math.round(h*s)); const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(im,0,0,w,h); try{ cb(c.toDataURL('image/jpeg',0.82)); }catch(e){ cb(durl); } }; im.onerror=()=>cb(durl); im.src=durl; }
+function applyBackdrop(){ const st=document.getElementById('stage'); if(!st)return;
+  const layers=[];
+  if(shop.spotlight)layers.push('radial-gradient(58% 46% at 50% 40%, rgba(255,255,255,.18), rgba(255,255,255,0) 62%)','radial-gradient(120% 100% at 50% 50%, rgba(0,0,0,0) 42%, rgba(0,0,0,.26) 100%)');
+  const dim=shop.bgDim||0; if(dim>0.001)layers.push('linear-gradient(rgba(0,0,0,'+dim+'),rgba(0,0,0,'+dim+'))');
+  let base; if(shop.backdropImage)base='url("'+shop.backdropImage+'") center/cover no-repeat';
+  else if(shop.backdropCustom){ const c=shop.backdropCustom; base='radial-gradient(120% 90% at 50% 18%, '+shade(c,0.16)+' 0%, '+c+' 58%, '+shade(c,-0.12)+' 100%)'; }
+  else base=BACKDROPS[shop.backdrop]||BACKDROPS.cream;
+  layers.push(base);
+  st.style.background=layers.join(', '); }
+// If backgrounds/background-1.jpg exists and the owner hasn't chosen another backdrop, use it on EVERY device — no setup needed
+function autoBackground(){ if(shop.backdropImage||shop.backdropCustom||(shop.backdrop&&shop.backdrop!=='cream'))return;
+  const url='backgrounds/background-1.jpg', im=new Image();
+  im.onload=()=>{ if(!shop.backdropImage&&!shop.backdropCustom&&(!shop.backdrop||shop.backdrop==='cream')){ shop.backdropImage=url; applyBackdrop(); } };
+  im.src=url; }
+// ---- In-app publishing to GitHub (owner only; token stays in this browser, never in shop.json) ----
+function ghCfg(){ try{ return JSON.parse(localStorage.getItem('bloom_gh')||'{}'); }catch(e){ return {}; } }
+function ghSave(c){ try{ localStorage.setItem('bloom_gh',JSON.stringify(c)); }catch(e){} }
+function guessRepo(){ try{ const h=location.hostname, p=location.pathname.split('/').filter(Boolean); if(h.indexOf('github.io')>=0){ const u=h.split('.')[0], r=p[0]||''; if(u&&r)return u+'/'+r; } }catch(e){} return ''; }
+function b64utf8(str){ return btoa(unescape(encodeURIComponent(str))); }
+async function ghPut(path,b64,message){ const c=ghCfg(), repo=(c.repo||'').trim(), token=(c.token||'').trim();
+  if(!repo||repo.indexOf('/')<0) throw new Error('Enter your repo as user/name.'); if(!token) throw new Error('Enter your GitHub token.');
+  const hdr={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'};
+  const ri=await fetch('https://api.github.com/repos/'+repo,{headers:hdr});
+  if(!ri.ok) throw new Error(ri.status===404?'Repo not found, or token lacks access to it.':(ri.status===401?'Invalid token.':'Repo check failed ('+ri.status+').'));
+  const branch=(c.branch||'').trim()||(await ri.json()).default_branch||'main';
+  const api='https://api.github.com/repos/'+repo+'/contents/'+path;
+  let sha; try{ const g=await fetch(api+'?ref='+encodeURIComponent(branch),{headers:hdr}); if(g.ok)sha=(await g.json()).sha; }catch(e){}
+  const body={message,content:b64,branch}; if(sha)body.sha=sha;
+  const r=await fetch(api,{method:'PUT',headers:hdr,body:JSON.stringify(body)});
+  if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error((e.message||('HTTP '+r.status))+(r.status===403?' — token needs Contents: Read and write':'')); } return true; }
+async function publishBackground(s){ try{ const img=shop.backdropImage; if(!img||img.indexOf('data:')!==0){ s.textContent='Upload a photo first (Image button above), then Publish.'; return; }
+  s.textContent='Publishing background…'; await ghPut('backgrounds/background-1.jpg', img.substring(img.indexOf(',')+1), 'Update background');
+  saveShop(); s.textContent='✓ Published! Appears on phones/other devices within ~1 min.'; }catch(e){ s.textContent='Failed: '+e.message; } }
+async function publishSettings(s){ try{ s.textContent='Publishing settings…'; await ghPut('shop.json', b64utf8(JSON.stringify(shop,null,2)), 'Update shop settings'); s.textContent='✓ Settings published! Live within ~1 min.'; }catch(e){ s.textContent='Failed: '+e.message; } }
+function applyLighting(){ if(typeof renderer!=='undefined'&&renderer)renderer.toneMappingExposure=(shop.brightness!=null?shop.brightness:1.04);
+  const w=shop.warmth||0, n=new THREE.Color(0xffffff);
+  const col=(w>=0)?n.clone().lerp(new THREE.Color(0xffe6c8),w):n.clone().lerp(new THREE.Color(0xdbe8ff),-w);
+  if(typeof keyLight!=='undefined'&&keyLight){ keyLight.color.copy(col); const a=(shop.lightAngle!=null?shop.lightAngle:0.9); keyLight.position.set(Math.cos(a)*5.5,6,Math.sin(a)*4.5); }
+  if(typeof hemiLight!=='undefined'&&hemiLight){ hemiLight.color.copy(col); hemiLight.intensity=(shop.ambient!=null?shop.ambient:0.95); } }
+function makeShadowTexture(){ const cv=document.createElement('canvas'); cv.width=cv.height=128; const x=cv.getContext('2d'); const g=x.createRadialGradient(64,64,4,64,64,62); g.addColorStop(0,'rgba(0,0,0,0.6)'); g.addColorStop(0.5,'rgba(0,0,0,0.3)'); g.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle=g; x.fillRect(0,0,128,128); return new THREE.CanvasTexture(cv); }
+function applyShadow(){ if(typeof shadowMesh!=='undefined'&&shadowMesh){ shadowMesh.material.opacity=(shop.shadow!=null?shop.shadow:0.32); shadowMesh.visible=shadowMesh.material.opacity>0.01; } }
+function hexA(hex,a){ const c=new THREE.Color(hex); return 'rgba('+Math.round(c.r*255)+','+Math.round(c.g*255)+','+Math.round(c.b*255)+','+a+')'; }
+function applyFrame(){ const fr=document.getElementById('frame'); if(!fr)return;
+  if(!shop.frameOn){ fr.style.display='none'; return; }
+  const st=document.getElementById('stage'); if(!st)return; const W=st.clientWidth||300,H=st.clientHeight||300;
+  const s=(shop.frameSize!=null?shop.frameSize:0.7);
+  const w=Math.min(W*0.92,H*0.62)*s, h=Math.min(w*1.5,H*0.96);
+  fr.style.display='block'; fr.style.width=w+'px'; fr.style.height=h+'px';
+  fr.style.background=hexA(shop.frameColor||'#f3ece0',(shop.frameOpacity!=null?shop.frameOpacity:0.92));
+  fr.style.borderRadius=(shop.frameShape==='oval')?'50%':((shop.frameShape==='rounded')?'30px':'4px'); }
+const SIZES={S:{n:8,label:'Small'}, M:{n:13,label:'Medium'}, L:{n:20,label:'Large'}};
+
+const state={ wrapper:'natural', count:15, bloomSize:1, bloomLift:0, bunch:0.9, stemLen:1, trim:0.6, gather:null, cuts:[], mode:'select', stems:[], vaseOn:false, vaseW:1, vaseH:1, bow:null, wrapColor:null, explore:true };
+function saveState(){ try{ localStorage.setItem('bloom_save',JSON.stringify({wrapper:state.wrapper,count:state.count,bloomSize:state.bloomSize,bloomLift:state.bloomLift,bunch:state.bunch,stemLen:state.stemLen,trim:state.trim,bowColor:state.bowColor,bow:state.bow,wrapColor:state.wrapColor,gather:state.gather,cuts:state.cuts,stems:state.stems})); }catch(e){} }
+const history=[];
+function pushHistory(){ try{ const d=designSnapshot(); d._sigName=state.sigName||null; d._sigShop=state.sigShop||null; d._sigPrice=(state.sigPrice!=null?state.sigPrice:null); d._sigOrig=(state.sigOrig!=null?state.sigOrig:null); d._sigPhotos=state.sigPhotos||[]; history.push(JSON.stringify(d)); if(history.length>60)history.shift(); }catch(e){} }
+function undo(){ if(!history.length)return; let d; try{ d=JSON.parse(history.pop()); }catch(e){ return; }
+  if(Array.isArray(d)){ state.stems=d.map(s=>Object.assign({},s,{uid:uidCounter++})); }   // legacy stems-only entry
+  else if(d&&d.stems){ if(d.wrapper)state.wrapper=d.wrapper; if(d.count)state.count=d.count;
+    if(d.bloomSize!=null)state.bloomSize=d.bloomSize; if(d.bloomLift!=null)state.bloomLift=d.bloomLift; if(d.bunch!=null)state.bunch=d.bunch; if(d.stemLen!=null)state.stemLen=d.stemLen; if(d.trim!=null)state.trim=d.trim;
+    state.bowColor=d.bowColor; state.bow=d.bow||null; state.wrapColor=d.wrapColor||null; state.gather=d.gather||null; state.cuts=d.cuts||[];
+    state.stems=(d.stems||[]).map(s=>Object.assign({},s,{uid:uidCounter++}));
+    state.sigName=d._sigName||null; state.sigShop=d._sigShop||null; state.sigPrice=(d._sigPrice!=null?d._sigPrice:null); state.sigOrig=(d._sigOrig!=null?d._sigOrig:null); state.sigPhotos=d._sigPhotos||[];
+    _sigKey=(state.sigPrice!=null)?designKey():null; }   // bring the name pill (and any signature pricing) back with the restored bouquet
+  selectedUid=null; showSel(); updatePrice(); updateCounts(); rebuild(); saveState(); toast('↩ Went back'); }
+function loadState(){ try{ const s=JSON.parse(localStorage.getItem('bloom_save')||'null'); if(s&&Array.isArray(s.stems)){ Object.assign(state,s); if(!Array.isArray(state.cuts))state.cuts=[]; state.mode='select'; state.stems.forEach(st=>{ st.uid=uidCounter++; }); return true; } }catch(e){} return false; }   // reassign FRESH unique uids to every loaded stem (kills "tethered" duplicate-uid selection)
+const TAU=Math.PI*2, GOLD=Math.PI*(3-Math.sqrt(5));
+const rand=n=>(Math.random()*n)|0;
+const MAX_STEMS=42;
+let uidCounter=1, selectedUid=null, colorPickerOpen=false;
+let suggIdx=null, suggShownKey=[null,null], _revealed=false;   // sticky add-flower suggestions (per-slot index + last-shown flower so we only animate on a real change); one-time canvas reveal so the bouquet doesn't "jump" on load
+function makeStem(id){ const fdef=FLOWERS.find(f=>f.id===id), v=variantSel[id];
+  const faced=fdef&&fdef.faceRot!=null;   // flowers with a defined face turn toward the viewer (front=+x ⇒ spin=faceRot+90°) with a natural ±spread, so blooms don't point backward
+  const spin=faced ? (fdef.faceRot+Math.PI/2)+(Math.random()-0.5)*1.6 : Math.random()*TAU;
+  const st={uid:uidCounter++, id, src:(v&&v.src)||(fdef&&fdef.src), color:(v&&v.color)||undefined, spin, scale:0.92+Math.random()*0.16, jy:(Math.random()-0.5)*0.12, jphi:Math.random()*0.5};   // tighter size spread (±8%) → even stems
+  if(faced && Math.random()<0.5){ st.tilt=(Math.random()-0.5)*0.38; st.tiltAxis=[Math.cos(Math.random()*TAU),0,Math.sin(Math.random()*TAU)]; }   // ~half lean slightly away/tilted for a natural look
+  return st; }
+function afterChange(){ updatePrice(); updateCounts(); rebuild(); saveState(); renderSuggestions(); }
+
+/* ---------------- three.js scene ---------------- */
+let renderer,scene,camera,controls,bouquetGroup,wrapperNode,flowerClip,flowerNodes=[],ray,ndc,depthRT,backDepthMat,selRing=null,selT=0,selRT,olScene,olCam,olMat,selectedNode=null,selBox=null,needsOutline=true,keyLight,hemiLight,rimLight,shadowMesh;
+const modelCache={};   // src -> Promise<Object3D>
+const typeCache={};    // src -> 'stem' | 'head'
+const thumbData={};    // id -> dataURL (for the enlarged preview)
+
+function initThree(){
+  const canvas=document.getElementById('c');
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.04;
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(38,1,0.1,100);
+  camera.position.set(6.2,2.7,0);   // default view rotated 90° so the bouquet front faces you
+  controls=new THREE.OrbitControls(camera,canvas);
+  controls.enableDamping=true; controls.dampingFactor=0.08;
+  controls.enablePan=true; controls.minDistance=2.5; controls.maxDistance=24;
+  controls.minPolarAngle=0.2; controls.maxPolarAngle=1.9; controls.target.set(0,2.5,0);
+  controls.autoRotate=false; controls.autoRotateSpeed=0.6;   // face forward, no spin by default
+  controls.addEventListener('change',()=>{ needsOutline=true; });   // re-render the outline only when the view moves
+  // lights - soft studio
+  hemiLight=new THREE.HemisphereLight(0xfff6e6,0x6b6452,0.95); scene.add(hemiLight);
+  keyLight=new THREE.DirectionalLight(0xffffff,1.05); keyLight.position.set(3.5,6,4); scene.add(keyLight);
+  rimLight=new THREE.DirectionalLight(0xffe8cf,0.5); rimLight.position.set(-4,3,-3); scene.add(rimLight);
+  shadowMesh=new THREE.Mesh(new THREE.PlaneGeometry(4,4),new THREE.MeshBasicMaterial({map:makeShadowTexture(),transparent:true,depthWrite:false,opacity:0.32}));   // soft contact shadow under the bouquet
+  shadowMesh.rotation.x=-Math.PI/2; shadowMesh.position.y=0.02; shadowMesh.renderOrder=-2; scene.add(shadowMesh);
+  bouquetGroup=new THREE.Group(); scene.add(bouquetGroup);
+  // tap-to-select (distinguish a tap from an orbit drag by movement)
+  ray=new THREE.Raycaster(); ndc=new THREE.Vector2();
+  let dx=0,dy=0,dt=0;
+  canvas.addEventListener('pointerdown',e=>{ dx=e.clientX; dy=e.clientY; dt=Date.now(); });
+  canvas.addEventListener('pointerup',e=>{ if(Math.hypot(e.clientX-dx,e.clientY-dy)<8 && Date.now()-dt<500) pickAt(e.clientX,e.clientY); });
+  resize(); addEventListener('resize',resize);
+  try{ new ResizeObserver(resize).observe(document.getElementById('stage')); }catch(e){}   // stable on any container resize
+  // SELECTION OUTLINE: render the selected flower's silhouette (on layer 1, cage-cut) to selRT,
+  // then draw a constant-width white border around it as a screen overlay (the sample1 sticker look).
+  selRT=new THREE.WebGLRenderTarget(2,2);
+  olCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1); olScene=new THREE.Scene();
+  olMat=new THREE.ShaderMaterial({ transparent:true, depthTest:false, depthWrite:false,
+    uniforms:{ uTex:{value:null}, uTexel:{value:new THREE.Vector2(0.001,0.001)}, uR:{value:9.0}, uColor:{value:new THREE.Color(0xffffff)} },
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
+    fragmentShader:'varying vec2 vUv; uniform sampler2D uTex; uniform vec2 uTexel; uniform float uR; uniform vec3 uColor;\n'+
+      'void main(){ float a=texture2D(uTex,vUv).a; if(a>0.5) discard; float m=0.0; for(int i=0;i<24;i++){ float an=float(i)/24.0*6.2831853; vec2 o=vec2(cos(an),sin(an))*uR*uTexel; m=max(m, texture2D(uTex, vUv+o).a); } if(m<0.5) discard; gl_FragColor=vec4(uColor,1.0); }' });
+  olScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2), olMat));
+  (function loop(){ requestAnimationFrame(loop); controls.update();
+    renderer.render(scene,camera);
+    if(selectedNode){
+      const w=renderer.domElement.width, h=renderer.domElement.height;
+      if(selRT.width!==w||selRT.height!==h){ selRT.setSize(w,h); needsOutline=true; }
+      if(needsOutline){   // only re-render the silhouette when the view or the flower actually changed (perf)
+        const pc=new THREE.Color(); renderer.getClearColor(pc); const pa=renderer.getClearAlpha();
+        camera.layers.set(1);
+        renderer.setRenderTarget(selRT); renderer.setClearColor(0x000000,0); renderer.clear(); renderer.render(scene,camera); renderer.setRenderTarget(null);
+        camera.layers.set(0); renderer.setClearColor(pc,pa);
+        olMat.uniforms.uTex.value=selRT.texture; olMat.uniforms.uTexel.value.set(1/w,1/h);
+        needsOutline=false;
+      }
+      renderer.autoClear=false; renderer.render(olScene,olCam); renderer.autoClear=true;
+      updateGizmo();
+    }
+  })();
+}
+// position each arrow AROUND the selected flower's on-screen box (Junko3 style); freeze while pressing
+function updateGizmo(){
+  const gz=document.getElementById('gizmo'); if(!gz||gz.style.display==='none'||!selectedNode||gz._hold)return;
+  const box=selBox; if(!box||box.isEmpty())return;   // cached world box (no per-frame traversal)
+  const stg=document.getElementById('stage'), W=stg.clientWidth, H=stg.clientHeight;
+  let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9,front=false; const v=new THREE.Vector3();
+  for(let i=0;i<8;i++){ v.set((i&1)?box.max.x:box.min.x,(i&2)?box.max.y:box.min.y,(i&4)?box.max.z:box.min.z); v.project(camera);
+    if(v.z<1)front=true; const sx=(v.x*0.5+0.5)*W, sy=(-v.y*0.5+0.5)*H; if(sx<minx)minx=sx;if(sx>maxx)maxx=sx;if(sy<miny)miny=sy;if(sy>maxy)maxy=sy; }
+  if(!front)return;
+  const cx=(minx+maxx)/2, midy=(miny+maxy)/2, m=24;
+  const set=(g,x,y)=>{ const b=gz.querySelector('[data-g="'+g+'"]'); if(b){ b.style.left=Math.max(20,Math.min(W-20,x))+'px'; b.style.top=Math.max(20,Math.min(H-20,y))+'px'; } };
+  set('big',cx,miny-m-36);  set('up',cx,miny-m);
+  set('spinL',minx-m,miny-m); set('spinR',maxx+m,miny-m);
+  set('left',minx-m,midy);  set('right',maxx+m,midy);
+  set('tiltL',minx-m,maxy+m); set('tiltR',maxx+m,maxy+m);
+  set('down',cx,maxy+m);    set('small',cx,maxy+m+36);
+  set('front',maxx+m+38,midy-20); set('back',maxx+m+38,midy+20);
+  set('del',minx-m-38,midy);
+  set('dup',minx-m-38,midy-44);
+  set('color',minx-m-38,midy+44);
+}
+function installGizmo(){
+  const gz=document.getElementById('gizmo'); if(!gz)return;
+  const MV=0.06, SP=0.13, LN=0.09, SC=1.06;
+  const sel=()=>state.stems.find(x=>x.uid===selectedUid);
+  const horiz=(v,d)=>{ const s=sel(); if(!s||!selectedNode)return; s.dx=(s.dx||0)+v.x*d; s.front=(s.front||0)+v.z*d; selectedNode.position.x+=v.x*d; selectedNode.position.z+=v.z*d; };
+  const camRight=()=>{ const r=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); r.y=0; return r.lengthSq()<1e-6?new THREE.Vector3(1,0,0):r.normalize(); };
+  const camFwd=()=>{ const f=new THREE.Vector3(); camera.getWorldDirection(f); f.y=0; return f.lengthSq()<1e-6?new THREE.Vector3(0,0,-1):f.normalize(); };
+  const tilt=(d)=>{ const s=sel(); if(!s||!selectedNode)return; const r=camRight(); s.tiltAxis=[r.x,r.y,r.z]; s.tilt=(s.tilt||0)+d; selectedNode.rotateOnWorldAxis(r,d); };
+  const ops={
+    up:()=>{ const s=sel(); if(!s||!selectedNode)return; s.dy=(s.dy||0)+MV; selectedNode.position.y+=MV; },
+    down:()=>{ const s=sel(); if(!s||!selectedNode)return; s.dy=(s.dy||0)-MV; selectedNode.position.y-=MV; },
+    left:()=>horiz(camRight(),-MV), right:()=>horiz(camRight(),MV),
+    front:()=>horiz(camFwd(),-MV), back:()=>horiz(camFwd(),MV),
+    big:()=>{ const s=sel(); if(!s||!selectedNode)return; s.scale=(s.scale||1)*SC; selectedNode.scale.multiplyScalar(SC); },
+    small:()=>{ const s=sel(); if(!s||!selectedNode)return; s.scale=(s.scale||1)/SC; selectedNode.scale.multiplyScalar(1/SC); },
+    spinL:()=>{ const s=sel(); if(!s||!selectedNode)return; s.spin=(s.spin||0)+SP; selectedNode.rotateY(SP); },
+    spinR:()=>{ const s=sel(); if(!s||!selectedNode)return; s.spin=(s.spin||0)-SP; selectedNode.rotateY(-SP); },
+    tiltL:()=>tilt(-LN), tiltR:()=>tilt(LN),
+    del:()=>{ if(selectedUid!=null)removeByUid(selectedUid); }
+  };
+  gz.querySelectorAll('.gzb').forEach(b=>{
+    if(b.dataset.g==='dup'){ b.onclick=duplicateSelected; return; }
+    if(b.dataset.g==='color'){ b.onclick=()=>openColorPicker(!colorPickerOpen); return; }
+    const fn=ops[b.dataset.g]; if(!fn)return;
+    if(b.dataset.g==='del'){ b.onclick=fn; return; }
+    let iv=null, started=false;
+    const step=()=>{ if(sel()){ fn(); needsOutline=true; } else clearInterval(iv); };
+    const begin=(e)=>{ e.preventDefault(); e.stopPropagation(); if(!sel())return; gz._hold=true; if(!started){started=true; pushHistory();} step(); iv=setInterval(step,80); };
+    const end=()=>{ if(iv){clearInterval(iv);iv=null;} gz._hold=false; if(started){ started=false; if(selectedNode)selBox=new THREE.Box3().setFromObject(selectedNode); saveState(); } };
+    b.addEventListener('pointerdown',begin); b.addEventListener('pointerup',end); b.addEventListener('pointerleave',end); b.addEventListener('pointercancel',end);
+  });
+}
+function resize(){
+  const cv=renderer.domElement, w=cv.clientWidth||1, h=cv.clientHeight||1;   // use the canvas' DISPLAYED size → buffer + aspect always match (no stretch)
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); needsOutline=true; applyFrame();
+}
+// full-screen view: hide the panel (4 buttons + budget) and the add-flower icons so the bouquet fills the screen
+function toggleFullView(){ const app=document.getElementById('app'); const on=!app.classList.contains('immersive'); app.classList.toggle('immersive',on);
+  const b=document.getElementById('fsBtn'); if(b)b.innerHTML=on?'✕ Exit full view':'⛶ Full view';
+  setTimeout(()=>{ resize(); frame(); },50); }   // let the layout reflow, then re-fit the bouquet to the bigger stage
+function gltf(){
+  const l=new THREE.GLTFLoader();
+  if(typeof MeshoptDecoder!=='undefined'&&l.setMeshoptDecoder)l.setMeshoptDecoder(MeshoptDecoder);
+  try{ const d=new THREE.DRACOLoader(); d.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/libs/draco/'); l.setDRACOLoader(d); }catch(e){}
+  return l;
+}
+function loadModel(src){
+  if(modelCache[src])return modelCache[src];
+  modelCache[src]=new Promise((res,rej)=>{
+    gltf().load(src,g=>res(g.scene||g.scenes[0]),undefined,e=>rej(e));
+  });
+  return modelCache[src];
+}
+// tall model (stem+leaves) vs compact bloom head
+function classify(obj){
+  obj.updateMatrixWorld(true);
+  const s=new THREE.Box3().setFromObject(obj).getSize(new THREE.Vector3());
+  return (s.y>1.4*Math.max(s.x,s.z))?'stem':'head';
+}
+// clip every mesh in a flower to the wrapper line so nothing pokes through the paper
+// ---- cone mask (Junko3 approach): discard flower pixels that fall OUTSIDE the paper cone below the rim.
+// Blooms above the rim are untouched (no flat slice); side/back pokes vanish; the opaque paper hides the rest.
+const CUT_MAX=16;   // (kept for the legacy scissor tool; the sculpted deleter below does the real work)
+// ===== SCULPTED DELETER CAGE (baked from the Wrapper Lab) ==================================
+// A grid of NH rings × NA spokes defines a radius field + a sculptable per-angle rim. Any flower
+// fragment that sits OUTSIDE the cage AND below the rim is discarded. Rotates with the bouquet,
+// stays invisible. Edit it in lab.html, Export, and paste the JSON over DELETER below.
+const NH=6, NA=8;
+// ONE sculpted cage PER WRAPPER (each wrapper's opening is shaped differently).
+const WRAP_IDS=['natural','pink','white','paperbq','paperwrap','napkin','origami','floralbq'];
+function defaultCage(){ const grid=[],nodeY=[],open=[]; for(let h=0;h<NH;h++)for(let a=0;a<NA;a++){ grid.push(0.5*(0.4+1.0*(h/(NH-1)))); nodeY.push(h/(NH-1)); open.push(0); } return {grid,nodeY,open,rimMul:1}; }
+const SCULPT_NATURAL={
+  grid:[0.3153,0.3153,0.3153,0.3153,0.3153,0.3153,0.3153,0.3153,
+        0.2196,0.2196,0.2196,0.2196,0.2196,0.2196,0.2196,0.2196,
+        0.3781,0.3781,0.3781,0.3781,0.3781,0.3781,0.3781,0.3781,
+        0.4727,0.4727,0.4727,0.4727,0.3527,0.4727,0.4727,0.4727,
+        0.4992,0.6192,0.4992,0.4992,0.4992,0.4992,0.4992,0.7392,
+        0.3423,0.7023,0.5823,0.5823,0.5823,0.5823,0.5600,0.7023],
+  nodeY:[0,0,0,0,0,0,0,0,
+         0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+         0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,
+         0.45,0.6,0.6,0.6,0.6,0.6,0.6,0.6,
+         0.5,0.7,0.7,0.7,0.7,0.7,0.7,0.7,
+         0.55,0.75,0.75,0.85,1,0.9,0.79,0.75],
+  open:[0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0],
+  rimMul:1
+};
+const SCULPT_PINK={
+  grid:[0.4630787968635559,0.6422535181045532,0.1595904529094696,0.0610722154378891,0.05000000074505806,0.07943667471408844,0.1926352083683014,0.6944372653961182,
+        0.46908116340637207,0.6391281485557556,0.09369789808988571,0.05842430889606476,0.05000000074505806,0.05000000074505806,0.16619646549224854,0.6256811618804932,
+        0.472425252199173,0.416013240814209,0.5126467943191528,0.3832568824291229,0.2706281840801239,0.2720000445842743,0.5342553853988647,0.6250575184822083,
+        0.5069507360458374,0.7535123229026794,0.6690998673439026,0.4813128709793091,0.389544814825058,0.39176785945892334,0.7730165719985962,0.6481357216835022,
+        1.094010829925537,0.8911963701248169,0.8065288066864014,0.6798909902572632,0.4594688415527344,0.5617331266403198,0.854010820388794,0.7893998622894287,
+        1.1171544790267944,1.3408335447311401,1.1008515357971191,0.9046458601951599,0.5144316554069519,0.9478363990783691,1.1171544790267944,1.9463647603988647],
+  nodeY:[0,0,0,0,0,0,0,0,
+         0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+         0.4,0.4,0.4,0.4,0.4,0.4,0.4,0.4,
+         0.6,0.6,0.6,0.6,0.6,0.6,0.6,0.6,
+         0.8,0.785,0.8,0.8,0.8,0.8,0.8,0.7975,
+         1,0.7225,0.9675,0.925,0.925,0.94,0.9025,0.8],
+  open:[0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,0,0,0,0,0,0,0, 1,0,0,0,0,0,0,0, 1,0,0,0,0,0,0,0],
+  ang:[0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,-0.468,0,0,0,0,0,0, 0,-0.282,0,0,0,0,0,0.108, 0,0,0.156,0,0,0.564,0.108,-0.18],
+  gather:[0.08,0.36,0],
+  rimMul:1
+};
+const DELETERS={ natural:SCULPT_NATURAL, pink:SCULPT_PINK, white:defaultCage() };
+// per-wrapper overrides from the lab's saves on this machine (key: lab_deleter_<wrapperId>)
+WRAP_IDS.forEach(id=>{ try{ const _s=JSON.parse(localStorage.getItem('lab_deleter_'+id)||'null'); if(_s&&_s.NH===NH&&_s.NA===NA&&_s.grid&&_s.grid.length===NH*NA){ DELETERS[id]={grid:_s.grid,nodeY:_s.nodeY,open:_s.open||new Array(NH*NA).fill(0),ang:_s.ang||new Array(NH*NA).fill(0),gather:_s.gather||null,rimMul:_s.rimMul||1,bow:_s.bow||null}; } }catch(e){} });
+// back-compat: the old single 'lab_deleter' key → Kraft/natural
+try{ const _s=JSON.parse(localStorage.getItem('lab_deleter')||'null'); if(_s&&_s.NH===NH&&_s.grid&&_s.grid.length===NH*NA && !localStorage.getItem('lab_deleter_natural')){ DELETERS.natural={grid:_s.grid,nodeY:_s.nodeY,open:_s.open||new Array(NH*NA).fill(0),ang:_s.ang||new Array(NH*NA).fill(0),rimMul:_s.rimMul||1}; } }catch(e){}
+const SU={ uRimY:{value:1e9}, uBaseY:{value:0}, uGrid:{value:SCULPT_NATURAL.grid.slice()}, uNodeY:{value:SCULPT_NATURAL.nodeY.slice()}, uOpen:{value:SCULPT_NATURAL.open.slice()}, uAng:{value:new Array(NH*NA).fill(0)} };
+function setCage(id){ const c=DELETERS[id]||DELETERS.natural; for(let i=0;i<NH*NA;i++){ SU.uGrid.value[i]=c.grid[i]; SU.uNodeY.value[i]=c.nodeY[i]; SU.uOpen.value[i]=(c.open&&c.open[i])||0; SU.uAng.value[i]=(c.ang&&c.ang[i])||0; } return c; }
+// radius blends only CLOSED nodes; openness from the NEAREST spoke (dd<=0.5) → sharp openings (matches lab.html)
+const FN='float delR(vec3 wp, out float ceilTT){ float tt=clamp((wp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0);'+
+  ' float ang=atan(wp.z,wp.x); float af=ang*0.15915494; af=(af-floor(af))*float('+NA+');'+
+  ' float r=0.0; float cc=0.0; float wsum=0.0; float cw=0.0; float openNear=0.0;'+
+  ' for(int a=0;a<'+NA+';a++){'+
+  '   float sr=uGrid[a]; float so=uOpen[a]; float sg=uAng[a];'+
+  '   for(int h=0;h<'+(NH-1)+';h++){ float y0=uNodeY[h*'+NA+'+a]; float y1=uNodeY[(h+1)*'+NA+'+a];'+
+  '     float g0=uGrid[h*'+NA+'+a]; float g1=uGrid[(h+1)*'+NA+'+a]; float o0=uOpen[h*'+NA+'+a]; float o1=uOpen[(h+1)*'+NA+'+a]; float q0=uAng[h*'+NA+'+a]; float q1=uAng[(h+1)*'+NA+'+a];'+
+  '     if(tt>y0 && tt<=y1){ float f=(tt-y0)/max(y1-y0,1e-4); sr=mix(g0,g1,f); so=mix(o0,o1,f); sg=mix(q0,q1,f); } if(tt>y1 && h=='+(NH-2)+'){ sr=g1; so=o1; sg=q1; } }'+
+  '   float na=float(a)+sg; float dd=abs(na-af); dd=min(dd,float('+NA+')-dd); float aw=max(0.0,1.0-dd); if(aw<=0.0){ continue; }'+
+  '   cc+=uNodeY['+(NH-1)+'*'+NA+'+a]*aw;'+
+  '   float cl=1.0-clamp(so,0.0,1.0); r+=sr*aw*cl; cw+=aw*cl; wsum+=aw; if(dd<=0.5){ openNear=max(openNear,clamp(so,0.0,1.0)); } }'+
+  ' ceilTT=(wsum>0.0)?cc/wsum:1.0; if(openNear>0.5){ return 50.0; } return (cw>0.0)?r/cw:50.0; }';
+const DECL='varying vec3 vWp;\nuniform float uRimY;uniform float uBaseY;uniform float uGrid['+(NH*NA)+'];uniform float uNodeY['+(NH*NA)+'];uniform float uOpen['+(NH*NA)+'];uniform float uAng['+(NH*NA)+'];\n'+FN+'\n';
+// deleter cage + ACCURATE hue recolor (ported from Junko3): replace the hue, keep luminance/shading,
+// and auto-skip green pixels so leaves stay green. Live via per-material uniforms (no clone-to-array, no recompile on colour change).
+function maskCompileImpl(shader, mat){
+  shader.uniforms.uRimY=SU.uRimY; shader.uniforms.uBaseY=SU.uBaseY; shader.uniforms.uGrid=SU.uGrid; shader.uniforms.uNodeY=SU.uNodeY; shader.uniforms.uOpen=SU.uOpen; shader.uniforms.uAng=SU.uAng;
+  const ud=(mat&&mat.userData)||{};
+  shader.uniforms.uHueOn={value:ud.hueOn?1.0:0.0};
+  shader.uniforms.uHueTarget={value:new THREE.Color(ud.hueTarget||0xffffff)};
+  shader.uniforms.uHueAmt={value:(ud.hueAmt!=null?ud.hueAmt:0.85)};
+  shader.uniforms.uStretchK={value:(ud.stretchK!=null?ud.stretchK:1.0)};      // stem-stretch factor for the lower stem (1 = none)
+  shader.uniforms.uStemBaseY={value:(ud.stemBaseY!=null?ud.stemBaseY:0.0)};   // model-local Y of the stem base
+  shader.uniforms.uStemTopY={value:(ud.stemTopY!=null?ud.stemTopY:1e9)};      // model-local Y where the stem ends and head/leaves begin
+  if(mat){ mat.userData=mat.userData||{}; mat.userData.hueUniforms=shader.uniforms; }   // store for live updates
+  shader.vertexShader='varying vec3 vWp;\nuniform float uStretchK;uniform float uStemBaseY;uniform float uStemTopY;\n'+shader.vertexShader.replace('#include <begin_vertex>',
+    '#include <begin_vertex>\n  if(uStretchK>1.0001){ if(transformed.y<uStemTopY){ transformed.y=uStemBaseY+(transformed.y-uStemBaseY)*uStretchK; } else { transformed.y+=(uStemTopY-uStemBaseY)*(uStretchK-1.0); } }\n  vWp=(modelMatrix*vec4(transformed,1.0)).xyz;');
+  shader.fragmentShader=
+    'uniform float uHueOn;uniform vec3 uHueTarget;uniform float uHueAmt;\n'+
+    'vec3 fdRgb2hsv(vec3 c){ vec4 K=vec4(0.0,-0.3333333,0.6666667,-1.0); vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g)); vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r)); float d=q.x-min(q.w,q.y); float e=1.0e-10; return vec3(abs(q.z+(q.w-q.y)/(6.0*d+e)), d/(q.x+e), q.x); }\n'+
+    'vec3 fdHsv2rgb(vec3 c){ vec4 K=vec4(1.0,0.6666667,0.3333333,3.0); vec3 p=abs(fract(c.xxx+K.xyz)*6.0-K.www); return c.z*mix(K.xxx,clamp(p-K.xxx,0.0,1.0),c.y); }\n'+
+    DECL+shader.fragmentShader
+    .replace('#include <color_fragment>',
+      '#include <color_fragment>\n  if(uHueOn>0.5){ vec3 _hs=fdRgb2hsv(diffuseColor.rgb); float _hd=_hs.x*360.0; bool _grn=(_hd>70.0 && _hd<175.0 && _hs.y>0.18); if(!_grn){ vec3 _ht=fdRgb2hsv(uHueTarget); _hs.x=_ht.x; _hs.y=clamp(mix(_hs.y,_ht.y,clamp(uHueAmt,0.0,1.0))*1.32,0.0,1.0); _hs.z=clamp(pow(_hs.z,0.86)*(0.62+0.5*_ht.z),0.0,1.0); diffuseColor.rgb=fdHsv2rgb(_hs); } }')
+    .replace('#include <clipping_planes_fragment>',
+      '#include <clipping_planes_fragment>\n  float cl; float cr=delR(vWp,cl); float tt2=clamp((vWp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0); if(tt2<cl && length(vWp.xz)>cr){ discard; }');
+}
+function makeFlowerCompile(mat){ return function(shader){ maskCompileImpl(shader, mat); }; }   // captures the material so recolor uniforms live on it
+function maskCompile(shader){ maskCompileImpl(shader, null); }
+function applyMask(node){
+  node.traverse(o=>{ if(o.isMesh&&o.material){
+    (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(!m)return; if(!m.userData)m.userData={};
+      if(!m.userData._mask){ m.userData._mask=true; m.onBeforeCompile=makeFlowerCompile(m); m.needsUpdate=true; } });
+  }});
+}
+function updateMaskUniforms(){}   // baked cage; the rim height is set per-rebuild from the wrapper
+// yellow glow on the selected flower (clone its materials so only this one glows)
+function glowNode(node){
+  try{ node.traverse(o=>{ if(o.isMesh&&o.material){
+    const was=Array.isArray(o.material);
+    const arr=(was?o.material:[o.material]).map(m=>{ const c=m.clone(); if('emissive' in c){ c.emissive=new THREE.Color(0xffe24a); c.emissiveIntensity=0.7; } c.onBeforeCompile=m.onBeforeCompile; c.userData=Object.assign({},m.userData||{}); c.needsUpdate=true; return c; });
+    o.material=was?arr:arr[0];
+  }}); node.scale.setScalar(1.05); }catch(e){ console.warn('glow failed',e); }
+}
+// recolour one flower ACCURATELY: clone its materials (shares geometry+texture → ~free) and colorize to any hue
+function recolorNode(node,hex){
+  try{ node.traverse(o=>{ if(o.isMesh&&o.material){
+      const was=Array.isArray(o.material);
+      const arr=(was?o.material:[o.material]).map(m=>{ const c=m.clone(); c.userData=Object.assign({},m.userData||{}); c.userData._mask=true; c.userData.hueOn=1; c.userData.hueTarget=hex; c.userData.hueUniforms=null; c.onBeforeCompile=makeFlowerCompile(c); c.customProgramCacheKey=function(){return 'flhue_'+hex;}; c.needsUpdate=true; return c; });   // unique key per hue → forces the recompile so the colour actually applies
+      o.material=was?arr:arr[0];
+    }});
+  }catch(e){ console.warn('recolor failed',e); }
+}
+// SELECTION: a white "sticker" silhouette outline that hugs the flower (inflated back-faces in screen space),
+// cut by the same deleter cage so it matches the visible flower exactly.
+function outlineCompile(shader){   // SAFE: only a world-pos varying + the cage discard (no project_vertex override)
+  shader.uniforms.uRimY=SU.uRimY; shader.uniforms.uBaseY=SU.uBaseY; shader.uniforms.uGrid=SU.uGrid; shader.uniforms.uNodeY=SU.uNodeY; shader.uniforms.uOpen=SU.uOpen; shader.uniforms.uAng=SU.uAng;
+  shader.vertexShader='varying vec3 vWp;\n'+shader.vertexShader.replace('#include <begin_vertex>',
+    '#include <begin_vertex>\n  vWp=(modelMatrix*vec4(transformed,1.0)).xyz;');
+  shader.fragmentShader=DECL+shader.fragmentShader.replace('#include <clipping_planes_fragment>',
+    '#include <clipping_planes_fragment>\n  float cl; float cr=delR(vWp,cl); float tt2=clamp((vWp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0); if(tt2<cl && length(vWp.xz)>cr){ discard; }');
+}
+// scaled-hull outline: a white copy of the flower inflated ~6% about its centre, back-faces only → a sticker border
+function makeOutline(node){
+  const box=new THREE.Box3().setFromObject(node), c=box.getCenter(new THREE.Vector3());
+  const clone=node.clone(true);
+  clone.traverse(o=>{ if(o.isMesh){ const m=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.BackSide}); m.onBeforeCompile=outlineCompile; o.material=m; o.userData={}; o.renderOrder=-1; } });
+  const wrap=new THREE.Group(); wrap.position.copy(c); clone.position.sub(c); wrap.add(clone); wrap.scale.setScalar(1.06);
+  return wrap;
+}
+// tap (not drag) a flower to select it; tap empty space to deselect
+function pickAt(cx,cy){
+  const r=renderer.domElement.getBoundingClientRect();
+  ndc.x=((cx-r.left)/r.width)*2-1; ndc.y=-((cy-r.top)/r.height)*2+1;
+  ray.setFromCamera(ndc,camera);
+  if(state.mode==='scissors'){
+    const hits=ray.intersectObjects(flowerNodes,true);
+    if(hits.length){ const p=hits[0].point; pushHistory(); state.cuts.push({x:p.x,y:p.y,z:p.z,r:0.20}); if(state.cuts.length>CUT_MAX)state.cuts.shift(); afterChange(); }
+    else toast('Tap on a flower part to trim it');
+    return;
+  }
+  const _cb=document.getElementById('createBtn'); const _inCreate=_cb&&_cb.classList.contains('on');
+  if(!_inCreate && state.explore){ toast('Tap ✏️ Edit to move or change flowers'); return; }   // selection is locked in Explore mode → user must opt into editing
+  const hits=ray.intersectObjects(flowerNodes,true);
+  if(hits.length){ let o=hits[0].object; while(o.parent&&o.parent!==bouquetGroup)o=o.parent; selectedUid=(o.userData.uid!=null)?o.userData.uid:null; }
+  else selectedUid=nearestFlowerUid(cx,cy);   // missed the mesh → grab the closest flower on screen (much easier to select)
+  showSel(); rebuild();
+}
+// forgiving selection: if a tap misses a thin/occluded flower, pick the nearest flower centre within ~64px on screen
+function nearestFlowerUid(cx,cy){
+  if(!flowerNodes||!flowerNodes.length||!camera)return null;
+  const r=renderer.domElement.getBoundingClientRect(); const v=new THREE.Vector3();
+  let best=null,bestD=64*64;
+  for(const n of flowerNodes){ const b=new THREE.Box3().setFromObject(n); if(b.isEmpty())continue;
+    b.getCenter(v); v.project(camera);
+    const sx=r.left+(v.x*0.5+0.5)*r.width, sy=r.top+(-v.y*0.5+0.5)*r.height;
+    const d=(sx-cx)*(sx-cx)+(sy-cy)*(sy-cy);
+    if(d<bestD){ bestD=d; best=(n.userData.uid!=null)?n.userData.uid:best; }
+  }
+  return best;
+}
+// "Add this too" suggestions — surface complementary flowers so new users discover they can build/edit the bouquet
+function pickSuggestions(){
+  const present={}; state.stems.forEach(s=>present[s.id]=(present[s.id]||0)+1);
+  const avail=FLOWERS.filter(f=>flowerOn(f.id)); const out=[];
+  const fillers=avail.filter(f=>f.filler&&!present[f.id]); if(fillers.length)out.push(fillers[0]);   // a filler (baby's breath) reads as an obvious "add"
+  avail.filter(f=>!f.filler&&!present[f.id]).forEach(f=>{ if(out.length<2)out.push(f); });            // flowers not yet in the bouquet
+  avail.forEach(f=>{ if(out.length<2&&out.indexOf(f)<0)out.push(f); });                                // fall back to anything else
+  return out.slice(0,2);
+}
+function offeredFlowers(){ return FLOWERS.filter(f=>flowerOn(f.id)); }   // the flowers the owner currently offers
+// advance one slot's icon to the next offered flower (the ▸ arrow); keeps it different from the other slot
+function cycleSugg(i){ const pool=offeredFlowers(); if(pool.length<2||!suggIdx)return; let n=(suggIdx[i]+1)%pool.length; if(pool.length>2 && n===suggIdx[1-i])n=(n+1)%pool.length; suggIdx[i]=n; renderSuggestions(); }
+function renderSuggestions(){
+  const box=document.getElementById('suggest'); if(!box)return;
+  const cb=document.getElementById('createBtn'), inCreate=cb&&cb.classList.contains('on');
+  if(inCreate||selectedUid!=null||!state.stems.length){ box.innerHTML=''; return; }   // only in the simple browse view
+  const pool=offeredFlowers(); if(!pool.length){ box.innerHTML=''; return; }
+  if(!suggIdx){ const seed=pickSuggestions(), ix=f=>pool.findIndex(p=>p.id===f.id);   // first time: seed with complementary (not-present) flowers
+    let a=seed[0]?ix(seed[0]):0; if(a<0)a=0; let b=seed[1]?ix(seed[1]):-1; if(b<0||b===a)b=(a+1)%pool.length; suggIdx=[a,b]; }
+  const slots=[{cls:'l',k:'left'},{cls:'r',k:'right'}];   // mid-height left & right beside the bouquet
+  box.innerHTML='';
+  for(let i=0;i<2 && i<pool.length;i++){
+    suggIdx[i]=((suggIdx[i]%pool.length)+pool.length)%pool.length;
+    if(pool.length>1 && i===1 && suggIdx[1]===suggIdx[0])suggIdx[1]=(suggIdx[0]+1)%pool.length;
+    const f=pool[suggIdx[i]], s=slots[i];
+    const w=document.createElement('div'); w.className='sugWrap '+s.cls; w.style[s.k]='14px';
+    const b=document.createElement('button'); b.className='sugg'+(suggShownKey[i]===f.id?'':' pop');   // only pop-animate when this slot's flower actually changed
+    suggShownKey[i]=f.id;
+    const t=thumbData[f.id]; if(t)b.style.backgroundImage='url('+t+')'; else b.style.background=f.dot||'#cdb3a0';
+    b.innerHTML='<span class="pl">+</span>';
+    b.onclick=(e)=>{ e.stopPropagation(); if(state.stems.length>=MAX_STEMS){ toast("That's a full bouquet!"); return; } pushHistory(); const ns=makeStem(f.id); state.stems.push(ns); selectedUid=ns.uid; setExplore(false); afterChange(); showSel(); playSparkle('burst'); playSound('chime'); toast('Added '+f.name+' — use the arrows to place it'); };   // select the new flower so it's highlighted for placement (duplicate ⧉ to add more)
+    const ar=document.createElement('button'); ar.className='sugAr'; ar.innerHTML='▸'; ar.title='Show another flower or colour';
+    ar.onclick=(e)=>{ e.stopPropagation(); cycleSugg(i); };
+    const nm=document.createElement('span'); nm.className='nm2'; nm.textContent='Add '+f.name;
+    w.appendChild(b); w.appendChild(ar); w.appendChild(nm); box.appendChild(w);
+  }
+}
+function setExplore(on){ state.explore=!!on; if(state.explore && selectedUid!=null){ selectedUid=null; showSel(); }   // leaving Edit → drop any selection/gizmo
+  const eb=document.getElementById('exploreBtn'); if(eb){ eb.classList.toggle('on',state.explore); eb.textContent=state.explore?'🎲 Explore: ON':'🎲 Explore: OFF'; }
+  const edb=document.getElementById('editBtn'); if(edb){ edb.classList.toggle('on',!state.explore); edb.textContent=state.explore?'✏️ Edit: OFF':'✏️ Edit: ON'; }
+  const _vc=document.getElementById('vaseCtl'); if(_vc)_vc.style.display=(state.vaseOn && !state.explore)?'flex':'none'; }   // vase sliders follow the mode
+function markColorSwatch(hex){ const h=hex?String(hex).toLowerCase():null; document.querySelectorAll('#colorBar .csw').forEach(b=>b.classList.toggle('sel', !!h && b.dataset.hex && b.dataset.hex.toLowerCase()===h)); }
+// the colour palette is now opt-in (gizmo 🎨 button) and opens as a bottom sheet, hiding the gizmo so they never overlap
+function openColorPicker(on){
+  if(selectedUid==null)on=false;
+  colorPickerOpen=!!on;
+  const c=document.getElementById('colorBar'); if(c)c.classList.toggle('on',colorPickerOpen);
+  const g=document.getElementById('gizmo'); if(g)g.style.visibility=colorPickerOpen?'hidden':'visible';
+  if(colorPickerOpen){ const s=state.stems.find(x=>x.uid===selectedUid); markColorSwatch(s&&s.color); }
+}
+function showSel(){ const on=(selectedUid!=null); const d=document.getElementById('selBar'); if(d)d.style.display='none'; const g=document.getElementById('gizmo'); if(g){ g.style.display=on?'block':'none'; g.style.visibility='visible'; } colorPickerOpen=false; const c=document.getElementById('colorBar'); if(c)c.classList.remove('on'); renderSuggestions(); }
+function setColor(hex){ if(selectedUid==null)return; const s=state.stems.find(x=>x.uid===selectedUid); if(!s)return; pushHistory(); s.color=hex;
+  const node=flowerNodes.find(n=>n.userData&&n.userData.uid===selectedUid); if(node)recolorNode(node,hex);   // recolour the live flower in place — no rebuild, no flicker
+  saveState(); }
+// center a model at origin and scale so its largest dim = target
+function fitCentered(obj,target){
+  obj.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(obj),size=box.getSize(new THREE.Vector3()),c=box.getCenter(new THREE.Vector3());
+  const s=target/(Math.max(size.x,size.y,size.z)||1);
+  obj.position.set(-c.x*s,-c.y*s,-c.z*s); obj.scale.setScalar(s);
+  const holder=new THREE.Group(); holder.add(obj); return holder;
+}
+// scale so HEIGHT = target, seat base at y=0, centered in x/z
+function fitStanding(obj,targetH){
+  obj.updateMatrixWorld(true);
+  let box=new THREE.Box3().setFromObject(obj),size=box.getSize(new THREE.Vector3());
+  const s=targetH/(size.y||1); obj.scale.setScalar(s); obj.updateMatrixWorld(true);
+  box=new THREE.Box3().setFromObject(obj);
+  obj.position.x-=(box.min.x+box.max.x)/2; obj.position.z-=(box.min.z+box.max.z)/2; obj.position.y-=box.min.y;
+  const holder=new THREE.Group(); holder.add(obj);
+  holder.userData.topY=box.max.y-box.min.y;                                          // real rim height (top of paper)
+  holder.userData.halfW=Math.max(box.max.x-box.min.x,box.max.z-box.min.z)*0.5;       // real opening half-width (drives the cone mask)
+  return holder;
+}
+// scale a model uniformly so its widest horizontal span = targetW, centred at its own origin (used for bows)
+function fitToWidth(obj,targetW){
+  obj.updateMatrixWorld(true);
+  let box=new THREE.Box3().setFromObject(obj),size=box.getSize(new THREE.Vector3());
+  const s=targetW/(Math.max(size.x,size.z)||1); obj.scale.setScalar(s); obj.updateMatrixWorld(true);
+  box=new THREE.Box3().setFromObject(obj);
+  obj.position.x-=(box.min.x+box.max.x)/2; obj.position.y-=(box.min.y+box.max.y)/2; obj.position.z-=(box.min.z+box.max.z)/2;
+  const holder=new THREE.Group(); holder.add(obj); return holder;
+}
+// replace KHR-transmission/glass materials with a plain opaque standard material (keeps base colour/texture) — for bows
+function solidify(node,tint){ node.traverse(o=>{ if(o.isMesh&&o.material){ const old=Array.isArray(o.material)?o.material[0]:o.material; const map=(old&&old.map)||null;
+  const m=new THREE.MeshStandardMaterial({ map:map, color:map?0xffffff:((old&&old.color&&old.color.getHex)?old.color.getHex():0xcccccc), roughness:(old&&old.roughness!=null)?Math.min(0.85,old.roughness):0.45, metalness:0, side:THREE.DoubleSide });
+  if(tint){ m.onBeforeCompile=(sh)=>hueOnlyCompile(sh,tint); m.customProgramCacheKey=function(){return 'bowhue_'+tint;}; }   // recolour the bow via the no-cage hue shader (so the bow is never clipped)
+  o.material=m; } }); }
+
+// scale so HEIGHT = target, seat base at y=0, centered x/z (for stem flowers)
+function fitToHeight(obj,targetH){
+  obj.updateMatrixWorld(true);
+  let box=new THREE.Box3().setFromObject(obj),size=box.getSize(new THREE.Vector3());
+  const s=targetH/(size.y||1); obj.scale.setScalar(s); obj.updateMatrixWorld(true);
+  box=new THREE.Box3().setFromObject(obj);
+  obj.position.x-=(box.min.x+box.max.x)/2; obj.position.z-=(box.min.z+box.max.z)/2; obj.position.y-=box.min.y;
+  const holder=new THREE.Group(); holder.add(obj); return holder;
+}
+
+const WRAP_H=3.0, HEAD=0.62, BABY=0.62;
+let rebuildToken=0;
+
+/* ---------------- faux-glass vase (PROTOTYPE — tumbler ported from Junko3, cheap glass) ---------------- */
+const VASE_TUMBLER={ profile:[[0.235,0],[0.235,0.05],[0.235,0.62],[0.25,1.0]] };   // straight-walled tumbler (no lower taper)
+function smoothLathe(points){ if(!points||points.length<3)return points?points.slice():[]; const curve=new THREE.SplineCurve(points); const out=curve.getPoints(Math.max(40,(points.length-1)*10)); for(const p of out){ if(p.x<0.008)p.x=0.008; } return out; }
+function vaseGeometry(v){ const prof=v.profile, top=prof[prof.length-1], wall=0.022;
+  const pts=smoothLathe(prof.map(p=>new THREE.Vector2(p[0],p[1])));
+  pts.push(new THREE.Vector2(Math.max(top[0]-wall,0.01), top[1]));                                    // rim lip
+  const inner=[]; for(let i=prof.length-2;i>=0;i--){ const x=prof[i][0],y=prof[i][1]; if(y<top[1]*0.10){ inner.push(new THREE.Vector2(Math.max(x-wall,0.02), top[1]*0.08)); break; } inner.push(new THREE.Vector2(Math.max(x-wall,0.02), y)); }   // thin base, no mid-height step
+  for(const p of smoothLathe(inner))pts.push(p);                                                       // inner wall (double-walled glass)
+  return new THREE.LatheGeometry(pts,96);
+}
+// CHEAP glass: transparent body + clearcoat + a Fresnel-bright rim. NO transmission → no extra refraction render pass (mobile-safe).
+function fauxGlassMat(hex){
+  const m=new THREE.MeshPhysicalMaterial({ color:new THREE.Color(hex||0xcfe7ec), metalness:0, roughness:0.06,
+    transparent:true, opacity:0.15, depthWrite:false, side:THREE.DoubleSide, clearcoat:1.0, clearcoatRoughness:0.04, reflectivity:0.55 });
+  m.onBeforeCompile=(sh)=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <dithering_fragment>',
+    '#include <dithering_fragment>\n  { vec3 _vn=normalize(vNormal); vec3 _vd=normalize(vViewPosition); float _fr=pow(1.0-clamp(dot(_vn,_vd),0.0,1.0),2.6); gl_FragColor.rgb+=_fr*0.55; gl_FragColor.a=clamp(gl_FragColor.a+_fr*0.80,0.0,0.96); }'); };
+  return m;
+}
+function buildVaseGroup(radius, height){   // sized to the bouquet (auto-fit) so the vase always looks proportional
+  const g=new THREE.Group(); const sxz=radius/0.245;   // lathe rim radius ≈ 0.245
+  const mesh=new THREE.Mesh(vaseGeometry(VASE_TUMBLER), fauxGlassMat(0xcfe7ec));
+  mesh.scale.set(sxz, height, sxz); mesh.renderOrder=3; g.add(mesh);
+  const wr=radius*0.82, wh=height*0.46;               // water ≈ 46% full
+  const water=new THREE.Mesh(new THREE.CylinderGeometry(wr, wr*0.92, wh, 48),
+    new THREE.MeshPhysicalMaterial({ color:0xdaf0f4, transparent:true, opacity:0.42, roughness:0.12, metalness:0, depthWrite:false, side:THREE.DoubleSide }));
+  water.position.y=wh*0.5; water.renderOrder=2; g.add(water);
+  return g;
+}
+
+async function rebuild(){
+  const my=++rebuildToken;
+  spin(true);
+  try{
+    // wrapper
+    const wdef=WRAPPERS.find(w=>w.id===state.wrapper);
+    const wsrc=await loadModel(wdef.src); if(my!==rebuildToken)return;
+    while(bouquetGroup.children.length)bouquetGroup.remove(bouquetGroup.children[0]); selRing=null; selectedNode=null;
+    const wrapK=1+Math.min(1,Math.max(0,(state.stems.length-3)/26))*0.34; wrapperNode=fitStanding(wsrc.clone(true),WRAP_H*wrapK);   // bouquet grows gently & incrementally as flowers are added (≈+34% by a full bouquet)
+    // REPLACE the glassy transmission material with a fully OPAQUE matte paper so the wrapper truly occludes
+    // everything behind it (the GLBs ship as KHR transmission/volume, which renders see-through).
+    // The wrapper is ONE fused mesh (bow baked into the paper), so we colorize the height-band where the ribbon ties.
+    const _ty=wrapperNode.userData.topY||3, by0=_ty*0.13, by1=_ty*0.32;   // tight band on the ribbon (not the cone above it)
+    wrapperNode.traverse(o=>{ if(o.isMesh&&o.material){
+      const old=Array.isArray(o.material)?o.material[0]:o.material; const map=(old&&old.map)||null;
+      const m=new THREE.MeshStandardMaterial({ map:map, color:map?0xffffff:((old&&old.color&&old.color.getHex)?old.color.getHex():0xece6da), roughness:0.9, metalness:0.0, side:THREE.DoubleSide });
+      if(state.wrapColor){ m.onBeforeCompile=(sh)=>hueOnlyCompile(sh,state.wrapColor); m.customProgramCacheKey=function(){return 'wraphue_'+state.wrapColor;}; }   // recolour the whole wrapper (paper) via the no-cage hue shader; green parts are preserved
+      o.material=m;
+    }});
+    bouquetGroup.add(wrapperNode);
+    const topY=wrapperNode.userData.topY, halfW=wrapperNode.userData.halfW||0.6;
+    // optional real bow mesh tied to the FRONT of the wrapper (skipped in vase mode), auto-sized to the wrapper width
+    if(!state.vaseOn && state.bow){ const bdef=BOWS.find(b=>b.id===state.bow);
+      if(bdef){ try{ const bsrc=await loadModel(bdef.src); if(my!==rebuildToken)return;
+        const _bp=(DELETERS[state.wrapper]&&DELETERS[state.wrapper].bow)||null;   // per-wrapper bow placement (tuned in lab.html), else global defaults
+        const bY=_bp&&_bp.y!=null?_bp.y:BOW_Y, bF=_bp&&_bp.fwd!=null?_bp.fwd:BOW_FWD, bW=_bp&&_bp.w!=null?_bp.w:BOW_W, bR=_bp&&_bp.rotY!=null?_bp.rotY:BOW_ROT_Y;
+        const bow=fitToWidth(bsrc.clone(true), Math.max(0.35, halfW*bW)); solidify(bow, state.bowColor||null);
+        bow.position.set(halfW*bF, topY*bY, 0); bow.rotation.set(BOW_ROT_X,bR,0);
+        bouquetGroup.add(bow);
+      }catch(e){ console.warn('bow load failed',e); } } }
+    // Manual converge point + scissor trim volumes; the opaque paper still occludes whatever is inside it.
+    const cage=setCage(state.wrapper); SU.uRimY.value=topY*(cage.rimMul||1); SU.uBaseY.value=0; for(let _i=0;_i<NH*NA;_i++)SU.uGrid.value[_i]*=wrapK;   // load THIS wrapper's sculpted cage, scaled to the grown wrapper
+    const _gf=cage.gather; const G=(state.gather&&state.gather.length===3)?new THREE.Vector3(state.gather[0],state.gather[1],state.gather[2]):(_gf&&_gf.length===3?new THREE.Vector3(_gf[0]*topY,_gf[1]*topY,_gf[2]*topY):new THREE.Vector3(0,topY*0.45,0));   // per-wrapper baked converge point, else default throat
+    let arrTop=topY;
+    if(state.vaseOn){ bouquetGroup.remove(wrapperNode); SU.uRimY.value=-1000; arrTop=topY*0.9; G.set(0,topY*0.06,0); }   // gather near the vase floor; the tumbler is auto-sized to the bouquet AFTER the loop
+    flowerNodes=[];
+    const N=state.stems.length;
+    const sizeK=1-Math.min(0.16,Math.max(0,(N-14)/44)*0.16);   // heads stay close to full size; only very full bouquets nestle a touch smaller (the wrapper itself grows with count for the "bigger bouquet" feel)
+    for(let i=0;i<N;i++){
+      const st=state.stems[i];
+      const fdef=FLOWERS.find(f=>f.id===st.id); if(!fdef)continue;
+      const src=await loadModel(st.src||fdef.src); if(my!==rebuildToken)return;
+      const t=(N>1?i/(N-1):0), phi=i*GOLD+(st.jphi||0);
+      const lean=Math.min(0.55, state.bunch*(0.12+0.40*t));    // Bunch angle (capped) so blooms stay near the opening, stems stay inside
+      const up=new THREE.Vector3(Math.sin(lean)*Math.cos(phi),Math.cos(lean),Math.sin(lean)*Math.sin(phi)).normalize();
+      const _refGY=state.vaseOn?arrTop*0.45:G.y;               // size heads off the arrangement top (scales with the vase) so stems shorten when the vase shrinks
+      const span=(arrTop-_refGY)+0.20+state.bloomLift;         // reach from the converge point up to ~the opening
+      const reach=Math.max(0.6, span/Math.max(0.42,up.y))*(0.85+0.25*state.bloomSize)*state.stemLen;   // full reach from the converge point up to ~the opening
+      const fl=src.clone(true);
+      let _minY=Infinity,_maxY=-Infinity;   // RAW geometry Y range — matches the shader's position.y (unaffected by any GLB node scale) so the stretch magnitude is correct
+      fl.traverse(o=>{ if(o.isMesh&&o.geometry){ if(!o.geometry.boundingBox)o.geometry.computeBoundingBox(); const _g=o.geometry.boundingBox; if(_g){ if(_g.min.y<_minY)_minY=_g.min.y; if(_g.max.y>_maxY)_maxY=_g.max.y; } } });
+      if(!(_maxY>_minY)){ _minY=0; _maxY=1; }
+      const node=fitToHeight(fl, reach*st.scale*sizeK);   // NATURAL-proportion bloom, uniformly smaller as the bouquet fills (no width distortion)
+      node.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),up)
+          .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),st.spin));
+      node.position.set(G.x+(st.dx||0), G.y+(st.dy||0), G.z+(st.front||0)); // every stem base meets at the converge point
+      if(st.tilt && st.tiltAxis){ const _ax=new THREE.Vector3(st.tiltAxis[0],st.tiltAxis[1],st.tiltAxis[2]); if(_ax.lengthSq()>1e-6)node.rotateOnWorldAxis(_ax.normalize(),st.tilt); }  // gizmo lean
+      const STEM_FRAC=0.34, stretchK=1.0;   // stem-stretch disabled: each flower fits naturally to the opening, so stems are never over-long and heads stay in view (a shrunk head just nestles slightly lower, which looks natural)
+      node.userData.uid=st.uid; flowerNodes.push(node);
+      node.traverse(o=>{ if(o.isMesh&&o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(!m.userData)m.userData={}; m.userData.stretchK=stretchK; m.userData.stemBaseY=_minY; m.userData.stemTopY=_minY+STEM_FRAC*(_maxY-_minY); m.side=THREE.DoubleSide; });}});
+      applyMask(node);                                         // scissor trim volumes
+      if(st.color)recolorNode(node,st.color);                  // per-flower colour
+      bouquetGroup.add(node);
+      if(st.uid===selectedUid){ selectedNode=node; node.traverse(o=>{ if(o.isMesh)o.layers.enable(1); }); selBox=new THREE.Box3().setFromObject(node); needsOutline=true; }   // outline + cache box for the gizmo
+    }
+    if(state.vaseOn){   // AUTO-FIT the tumbler to the actual bouquet → always proportional; Width/Height sliders just tweak it
+      let fb=new THREE.Box3(); flowerNodes.forEach(n=>fb.expandByObject(n));
+      if(!fb.isEmpty()){
+        const bR=Math.max(fb.max.x-fb.min.x,fb.max.z-fb.min.z)*0.5;          // bouquet spread (widest, near the top)
+        const rimH=G.y+(fb.max.y-G.y)*0.34;                                  // rim ~a third up the arrangement, where the stems are still bundled
+        const vH=Math.max(0.4,rimH)*(state.vaseH||1), vR=Math.max(0.12,bR*0.42)*(state.vaseW||1);
+        bouquetGroup.add(buildVaseGroup(vR,vH));
+      }
+    }
+    frame();
+  }catch(e){ console.warn('rebuild failed',e); toast('Could not load a flower - check connection'); }
+  spin(false);
+  revealStage();   // first build is now framed → fade the canvas in (no "bottom-then-center" jump)
+}
+function revealStage(){ if(_revealed)return; _revealed=true; spin(false); const cv=document.getElementById('c'); if(cv){ cv.style.transition='opacity .45s ease'; cv.style.opacity='1'; } }
+function frame(){
+  if(!bouquetGroup)return;
+  const box=new THREE.Box3().setFromObject(bouquetGroup); if(box.isEmpty())return;
+  const c=box.getCenter(new THREE.Vector3()), size=box.getSize(new THREE.Vector3());
+  const fov=camera.fov*Math.PI/180, fitH=size.y, fitW=Math.max(size.x,size.z);
+  const distH=(fitH*0.5)/Math.tan(fov*0.5), distW=(fitW*0.5)/Math.tan(fov*0.5)/Math.max(0.45,camera.aspect);
+  const nF=(state.stems&&state.stems.length)||0;
+  const marginK=1.72-Math.min(0.40,Math.max(0,(nF-3))/37*0.40);   // small bouquets sit a little smaller in frame; fuller ones fill more of it → it visibly "grows" as you add flowers (always ≥1.32 so nothing clips)
+  const dist=Math.min(controls.maxDistance,Math.max(controls.minDistance,Math.max(distH,distW)*marginK));   // zoom so the WHOLE bouquet fits (headroom so tall stems / vase arrangements never clip the top)
+  const tgt=new THREE.Vector3(0,c.y,0);
+  let dir=new THREE.Vector3().subVectors(camera.position,controls.target); if(dir.lengthSq()<1e-6)dir.set(6.2,0.2,0); dir.normalize();
+  controls.target.copy(tgt); camera.position.copy(tgt).addScaledVector(dir,dist); camera.updateProjectionMatrix(); needsOutline=true;
+}
+function ensureDepthRT(w,h){
+  if(depthRT && depthRT.width===w && depthRT.height===h) return;
+  if(depthRT)depthRT.dispose();
+  depthRT=new THREE.WebGLRenderTarget(w,h);
+  depthRT.depthTexture=new THREE.DepthTexture(w,h,THREE.UnsignedIntType);
+}
+function setFlowersVisible(v){ if(!bouquetGroup)return; bouquetGroup.children.forEach(c=>{ if(c!==wrapperNode)c.visible=v; }); }
+
+/* ---------------- chip thumbnails (rendered from each GLB, so it's a real picture + a load check) ---------------- */
+let thumbR,thumbScene,thumbCam;
+function initThumb(){
+  thumbR=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
+  thumbR.setSize(220,220); thumbR.setPixelRatio(2); thumbR.outputEncoding=THREE.sRGBEncoding;
+  thumbScene=new THREE.Scene();
+  thumbScene.add(new THREE.HemisphereLight(0xffffff,0xcfc8ba,1.3));
+  const d=new THREE.DirectionalLight(0xffffff,1.0); d.position.set(2,3,4); thumbScene.add(d);
+  const f=new THREE.DirectionalLight(0xffffff,0.55); f.position.set(0,1,6); thumbScene.add(f);   // front fill so nothing reads as a black spot
+  thumbCam=new THREE.PerspectiveCamera(35,1,0.01,100);
+}
+// thumbnail-only hue recolour (same technique as the bouquet, no deleter) — lets variants render in their colour
+function hueOnlyCompile(shader,color){
+  shader.uniforms.uHT={value:new THREE.Color(color)};
+  shader.fragmentShader='uniform vec3 uHT;\n'+
+    'vec3 fdR2H(vec3 c){ vec4 K=vec4(0.0,-0.3333333,0.6666667,-1.0); vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g)); vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r)); float d=q.x-min(q.w,q.y); float e=1.0e-10; return vec3(abs(q.z+(q.w-q.y)/(6.0*d+e)), d/(q.x+e), q.x); }\n'+
+    'vec3 fdH2R(vec3 c){ vec4 K=vec4(1.0,0.6666667,0.3333333,3.0); vec3 p=abs(fract(c.xxx+K.xyz)*6.0-K.www); return c.z*mix(K.xxx,clamp(p-K.xxx,0.0,1.0),c.y); }\n'+
+    shader.fragmentShader.replace('#include <color_fragment>',
+      '#include <color_fragment>\n  { vec3 _hs=fdR2H(diffuseColor.rgb); float _hd=_hs.x*360.0; bool _grn=(_hd>70.0&&_hd<175.0&&_hs.y>0.18); if(!_grn){ vec3 _ht=fdR2H(uHT); _hs.x=_ht.x; _hs.y=mix(_hs.y,_ht.y,0.85); diffuseColor.rgb=fdH2R(_hs); } }');
+}
+async function makeThumb(src,isWrapper,color,rotY,rotX){
+  const obj=(await loadModel(src)).clone(true);
+  const holder=fitCentered(obj,1.5);
+  // clone materials so the bouquet's cone-mask never affects the thumbnail picture (and apply the variant colour)
+  holder.traverse(o=>{ if(o.isMesh&&o.material){
+    const cl=m=>{ const c=m.clone(); c.side=THREE.DoubleSide; c.userData={};
+      if(color){ c.onBeforeCompile=(sh)=>hueOnlyCompile(sh,color); c.customProgramCacheKey=function(){return 'thumbHue'+color;}; }
+      else { c.onBeforeCompile=function(){}; c.customProgramCacheKey=function(){return 'thumb';}; }
+      c.needsUpdate=true; return c; };
+    o.material=Array.isArray(o.material)?o.material.map(cl):cl(o.material);
+  }});
+  thumbScene.add(holder);
+  if(isWrapper){ holder.rotation.y=-Math.PI/2; }   // turn the wrapper to face front
+  else if(rotY||rotX){ holder.rotation.set(rotX||0, rotY||0, 0); }   // per-flower facing so the bloom faces the camera (FLOWERS.faceRot / faceTilt, radians)
+  holder.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(holder),c=box.getCenter(new THREE.Vector3()),s=box.getSize(new THREE.Vector3());
+  const rad=Math.max(s.x,s.y,s.z)*0.5||1;
+  if(isWrapper){ thumbCam.position.set(c.x, c.y+rad*0.7, c.z+rad*3.5); thumbCam.lookAt(c.x, c.y, c.z); }   // wrapper: above-front, pulled back so the whole wrapper (incl. the top) fits
+  else { thumbCam.position.set(c.x, c.y+rad*0.18, c.z+rad*3.0); thumbCam.lookAt(c.x, c.y+rad*0.38, c.z); }  // flower: sits a little lower in the frame
+  thumbR.render(thumbScene,thumbCam);
+  const data=thumbR.domElement.toDataURL('image/png');
+  thumbScene.remove(holder);
+  return data;
+}
+async function setThumbs(list,sel,isWrapper){
+  for(const def of list){
+    try{ const d=await makeThumb(def.src,isWrapper,null,def.faceRot||0,def.faceTilt||0); thumbData[def.id]=d;
+      document.querySelectorAll(sel+' .chip[data-id="'+def.id+'"] .sw').forEach(sw=>{
+        sw.style.backgroundImage='url('+d+')'; sw.style.backgroundSize='cover'; sw.style.backgroundPosition='center'; sw.textContent='';
+      });
+    }catch(e){ console.warn('thumb failed:',def.id,e&&e.message); }
+  }
+}
+async function loadThumbs(){ await setThumbs(WRAPPERS,'#wraps',true); await setThumbs(FLOWERS,'#flowers',false); renderSuggestions(); }   // refresh suggestion icons once real thumbnails exist
+
+/* ---------------- arrangement ---------------- */
+// tap a flower → add one of it to the bouquet
+function addFlower(id){
+  if(state.stems.length>=MAX_STEMS){ toast("That's a full bouquet!"); return; }
+  pushHistory(); const _ns=makeStem(id); state.stems.push(_ns); selectedUid=_ns.uid; setExplore(false);   // a manual add means "keep mine"; select it so it's highlighted for placement
+  afterChange(); showSel();
+}
+function removeFlower(id){ pushHistory(); for(let i=state.stems.length-1;i>=0;i--){ if(state.stems[i].id===id){ state.stems.splice(i,1); break; } } afterChange(); }
+function removeByUid(uid){ pushHistory(); const i=state.stems.findIndex(s=>s.uid===uid); if(i>=0)state.stems.splice(i,1); selectedUid=null; showSel(); afterChange(); }
+function nudgeSel(prop,d){ if(selectedUid==null)return; const s=state.stems.find(x=>x.uid===selectedUid); if(s){ pushHistory(); s[prop]=(s[prop]||0)+d; afterChange(); } }
+// true duplicate of the selected flower (same style + colour + size + tilt), nudged beside it, then selected
+function duplicateSelected(){
+  if(selectedUid==null)return;
+  const s=state.stems.find(x=>x.uid===selectedUid); if(!s)return;
+  if(state.stems.length>=MAX_STEMS){ toast("That's a full bouquet!"); return; }
+  pushHistory();
+  const c=Object.assign({},s); c.uid=uidCounter++; if(c.tiltAxis)c.tiltAxis=c.tiltAxis.slice();
+  const r=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0); r.y=0; if(r.lengthSq()<1e-6)r.set(1,0,0); r.normalize();
+  c.dx=(s.dx||0)+r.x*0.12; c.front=(s.front||0)+r.z*0.12;          // offset along screen-right so it doesn't overlap
+  state.stems.push(c); selectedUid=c.uid; afterChange(); showSel(); toast('Duplicated');
+}
+function setFlowerCount(id,n){
+  n=Math.max(0,Math.min(MAX_STEMS,n|0)); let c=state.stems.filter(s=>s.id===id).length; if(c===n)return;
+  pushHistory();
+  while(c<n && state.stems.length<MAX_STEMS){ state.stems.push(makeStem(id)); c++; }
+  while(c>n){ const idx=state.stems.map(s=>s.id).lastIndexOf(id); if(idx<0)break; state.stems.splice(idx,1); c--; }
+  afterChange();
+}
+function clearBouquet(){ pushHistory(); state.stems=[]; selectedUid=null; showSel(); afterChange(); }
+// a magical chime (synthesised — no audio file): a bright ascending bell arpeggio with shimmer overtones
+let _ac=null, _audioUnlocked=false;
+// iOS/Android need Web Audio "unlocked" inside a user gesture (a silent blip on first touch)
+function unlockAudio(){ if(_audioUnlocked)return; try{ _ac=_ac||new (window.AudioContext||window.webkitAudioContext)(); if(_ac.state==='suspended')_ac.resume();
+  const b=_ac.createBuffer(1,1,22050), s=_ac.createBufferSource(); s.buffer=b; s.connect(_ac.destination); s.start(0); _audioUnlocked=true; }catch(e){} }
+function playSound(forceFx){
+  const pool=(shop&&shop.soundPool)||['chime']; let fx=forceFx; if(!fx){ if(!pool.length)return; fx=pool[(Math.random()*pool.length)|0]; }
+  try{
+    _ac=_ac||new (window.AudioContext||window.webkitAudioContext)(); const ctx=_ac; if(ctx.state==='suspended')ctx.resume();
+    if(ctx.resume)ctx.resume();
+    const now=ctx.currentTime+0.06, out=ctx.createGain(); out.gain.value=0.85; out.connect(ctx.destination);
+    // a harp pluck: sawtooth through a low-pass that closes as it decays
+    const pluck=(f,tt,dur,amp)=>{ const o=ctx.createOscillator(); o.type='sawtooth'; o.frequency.value=f;
+      const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.8;
+      lp.frequency.setValueAtTime(Math.min(9000,f*9),tt); lp.frequency.exponentialRampToValueAtTime(Math.max(500,f*1.6),tt+dur*0.7);
+      const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,tt); g.gain.exponentialRampToValueAtTime(amp||0.12,tt+0.004); g.gain.exponentialRampToValueAtTime(0.0001,tt+dur);
+      o.connect(lp); lp.connect(g); g.connect(out); o.start(tt); o.stop(tt+dur+0.06); };
+    const HARP=[196,220,246.94,293.66,329.63,392,440,493.88,587.33,659.25,783.99,880,1046.5];   // deeper range (G3..C6)
+    if(fx==='harp'){          // deeper, quick up-sweep glissando
+      let t=0; HARP.forEach((f,i)=>{ pluck(f,now+t,0.4+(1-i/HARP.length)*0.5); t+=0.04; });
+    } else if(fx==='harpdown'){   // quick descending sweep
+      const r=HARP.slice().reverse(); let t=0; r.forEach((f,i)=>{ pluck(f,now+t,0.45+(i/r.length)*0.7); t+=0.05; });
+    } else if(fx==='harproll'){   // rolled chord — a strummed C major across lower octaves
+      [130.81,164.81,196,261.63,329.63,392,523.25].forEach((f,i)=>{ pluck(f,now+i*0.07,0.9+(1-i/7)*0.7,0.14); });
+    } else if(fx==='musicbox'){
+      // MUSIC BOX: twinkly tine timbre, short phrase
+      const sc=[1046.5,1318.5,1568,2093,1760]; let t=0;
+      sc.forEach((f)=>{ const tt=now+t, dur=0.45+Math.random()*0.2;
+        [[1,0.12],[3.0,0.03],[5.0,0.014]].forEach(([mult,amp])=>{ const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f*mult;
+          const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,tt); g.gain.exponentialRampToValueAtTime(amp,tt+0.004); g.gain.exponentialRampToValueAtTime(0.0001,tt+dur);
+          o.connect(g); g.connect(out); o.start(tt); o.stop(tt+dur+0.05); });
+        t+=0.12; });
+    } else {
+      // WIND CHIMES: random pentatonic notes, irregular timing, metallic bell overtones, soft decay
+      const sc=[1046.5,1174.7,1318.5,1568,1760,2093,2349,2637,3136]; let t=0;
+      for(let i=0;i<4;i++){ const f=sc[(Math.random()*sc.length)|0], tt=now+t, dur=0.7+Math.random()*0.7;
+        [[1,0.14],[2.76,0.045],[5.40,0.02]].forEach(([mult,amp])=>{ const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f*mult;
+          const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,tt); g.gain.exponentialRampToValueAtTime(amp,tt+0.012); g.gain.exponentialRampToValueAtTime(0.0001,tt+dur);
+          o.connect(g); g.connect(out); o.start(tt); o.stop(tt+dur+0.05); });
+        t+=0.04+Math.random()*0.16; }
+    }
+  }catch(e){}
+}
+// a quick gold sparkle shimmer over the bouquet (played when a new arrangement is generated)
+function sparkleBurst(){
+  const stage=document.getElementById('stage'); if(!stage)return;
+  const W=stage.clientWidth||300, H=stage.clientHeight||300, glyphs=['✦','✧','⋆','✸','❋','✺'];
+  for(let i=0;i<28;i++){
+    const s=document.createElement('div'); s.className='sparkle';
+    s.style.left=(W*0.5 + (Math.random()-0.5)*W*0.62)+'px';
+    s.style.top=(H*0.34 + (Math.random()-0.5)*H*0.46)+'px';
+    s.style.fontSize=(5+Math.random()*8)+'px';
+    s.style.animationDelay=(Math.random()*0.4).toFixed(2)+'s';
+    s.textContent=glyphs[i%glyphs.length];
+    stage.appendChild(s); setTimeout(()=>{ try{s.remove();}catch(e){} }, 1600);
+  }
+}
+// sparks travel around the frame's border like a welding/magic-wand trace (sequential delay = a wave around the edge)
+function sparkleFrame(){ const stage=document.getElementById('stage'), fr=document.getElementById('frame'); if(!stage)return;
+  const sr=stage.getBoundingClientRect(); let x,y,w,h;
+  if(fr && fr.style.display!=='none' && fr.offsetWidth){ const r=fr.getBoundingClientRect(); x=r.left-sr.left; y=r.top-sr.top; w=r.width; h=r.height; }
+  else { const W=stage.clientWidth, H=stage.clientHeight; w=W*0.58; h=H*0.72; x=(W-w)/2; y=(H-h)/2; }
+  const cx=x+w/2, cy=y+h/2, rx=w/2, ry=h/2, shape=(shop&&shop.frameShape)||'oval', N=52, glyphs=['✦','✧','⋆','✸'], P=2*(w+h);
+  for(let i=0;i<N;i++){ const t=i/N; let px,py;
+    if(shape==='oval'){ const a=t*6.283; px=cx+rx*Math.cos(a); py=cy+ry*Math.sin(a); }   // follow the ellipse
+    else { let d=t*P; if(d<w){px=x+d;py=y;} else if((d-=w)<h){px=x+w;py=y+d;} else if((d-=h)<w){px=x+w-d;py=y+h;} else {px=x;py=y+h-(d-w);} }   // follow the rectangle (square / rounded)
+    const zz=(i%2?5:-5), dx=px-cx, dy=py-cy, dl=Math.hypot(dx,dy)||1; px+=zz*dx/dl; py+=zz*dy/dl;   // radial zig-zag
+    const s=document.createElement('div'); s.className='sparkle weld';
+    s.style.left=px+'px'; s.style.top=py+'px'; s.style.fontSize=(7+Math.random()*7)+'px'; s.style.animationDelay=(t*0.95).toFixed(2)+'s';
+    s.textContent=glyphs[i%glyphs.length]; stage.appendChild(s); setTimeout(()=>{ try{s.remove();}catch(e){} }, 2100); } }
+function sparkleRain(){ const stage=document.getElementById('stage'); if(!stage)return; const W=stage.clientWidth||300, H=stage.clientHeight||300, glyphs=['✦','✧','⋆','❋','✺'];
+  for(let i=0;i<58;i++){ const s=document.createElement('div'); s.className='sparkle rain';
+    s.style.left=(Math.random()*W)+'px'; s.style.top='-10px'; s.style.fontSize=(6+Math.random()*11)+'px';
+    s.style.setProperty('--fall',(H*0.5+Math.random()*H*0.5)+'px'); s.style.animationDelay=(Math.random()*1.0).toFixed(2)+'s';
+    s.textContent=glyphs[i%glyphs.length]; stage.appendChild(s); setTimeout(()=>{ try{s.remove();}catch(e){} }, 3000); } }
+function playSparkle(fx){ fx=fx||'burst'; if(fx==='off')return; if(fx==='frame'){ sparkleFrame(); return; } if(fx==='rain'){ sparkleRain(); return; } sparkleBurst(); }
+// Generate: keep the EXACT flowers + colours you have, just reshuffle the arrangement (a fresh look, same bouquet)
+const BQ_NAMES=['Blushing Promise','Crimson Kiss','Moonlit Romance','Forever Yours','Sweet Devotion','Velvet Dream','First Love','Endless Embrace','Whispering Petals','Golden Affection','Royal Bloom','Champagne Garden','Diamond Petals','The Grand Bouquet','Luxe Blossom','Velvet Orchid','Opulent Garden','Signature Elegance','The Crown Jewel','Timeless Beauty','Petal Party','Bloom Boom','Flower Power','Wild & Wonderful','Sunshine Sprinkles','Happy Petals','Blooming Marvel','Garden Giggles','Butterfly Wishes','Rainbow Bloom','Sakura Whisper','Kyoto Garden','Morning Hanami','Crimson Sakura','Zen Blossom','Moon Over Kyoto','Cherry Moon','Harmony Bloom','Imperial Garden','Petals of Japan','The Showstopper','Bloom Theory','Petal Perfection','Cloud Nine','Bloomscape','Floral Muse','The Statement','Wild Luxe','Bloom & Beyond','The Signature','Enchanted Symphony','Starlight Garden','Secret Garden','Celestial Bloom','Midnight Rose','Orchid Majesty','Paradise Found','Eternal Spring','Garden of Dreams','Love in Full Bloom'];
+let _lastName='';
+function cuteName(){ let n; do{ n=BQ_NAMES[(Math.random()*BQ_NAMES.length)|0]; }while(n===_lastName && BQ_NAMES.length>1); _lastName=n; return n; }
+function nameThisBouquet(){ state.sigName=cuteName(); state.sigShop=null; state.sigPrice=null; state.sigOrig=null; state.sigPhotos=[]; _sigKey=null; }   // a fresh cute name + clear any signature pricing/shop
+// In Create mode with a curated bouquet, Generate stays INSIDE your selection:
+// only your chosen flowers/styles/colours, resampled into a fresh varied arrangement.
+function generateFromSelection(){
+  pushHistory();
+  const pool=state.stems.map(s=>({id:s.id,src:s.src,color:s.color}));   // multiset → keeps your proportions, styles & colours
+  const base=pool.length;
+  const lo=Math.max(5,Math.round(base*0.8)), hi=Math.min(MAX_STEMS,Math.round(base*1.25));
+  const n=lo+Math.floor(Math.random()*(hi-lo+1));                       // vary fullness a little each press
+  state.stems=[];
+  for(let i=0;i<n;i++){ const p=pool[(Math.random()*pool.length)|0]; const st=makeStem(p.id); if(p.src)st.src=p.src; if(p.color)st.color=p.color; state.stems.push(st); }
+  selectedUid=null; nameThisBouquet(); afterChange(); showSel(); playSparkle('burst'); playSound('chime');
+}
+// Build the fullest pretty bouquet that fits a $ budget (wrapper price included). Live from the home slider.
+// Does NOT push history — the slider pushes once per drag so a whole drag is a single undo step.
+function generateToBudget(budget){
+  const wrap=WRAPPERS.find(w=>w.id===state.wrapper)||{price:0};
+  let remaining=budget-(wrap.price||0);
+  const avail=FLOWERS.filter(f=>flowerOn(f.id));
+  state.stems=[]; selectedUid=null;
+  if(avail.length){
+    const cheapest=Math.min.apply(null,avail.map(f=>f.price));
+    const focals=avail.filter(f=>!f.filler), fillers=avail.filter(f=>f.filler);
+    const palette=[]; const pool=focals.length?focals:avail;
+    const A=pool[(Math.random()*pool.length)|0]; palette.push(A);
+    if(pool.length>1 && Math.random()<0.6){ let B; do{ B=pool[(Math.random()*pool.length)|0]; }while(B===A); palette.push(B); }   // sometimes a two-flower mix
+    let guard=0;
+    while(remaining>=cheapest && state.stems.length<MAX_STEMS && guard++<300){
+      let pick=(fillers.length && Math.random()<0.22)?fillers[(Math.random()*fillers.length)|0]:palette[(Math.random()*palette.length)|0];
+      if(pick.price>remaining){ const aff=avail.filter(f=>f.price<=remaining); if(!aff.length)break; pick=aff[(Math.random()*aff.length)|0]; }
+      state.stems.push(makeStem(pick.id)); remaining-=pick.price;
+    }
+  }
+  nameThisBouquet(); afterChange(); showSel();
+}
+function syncVaseUI(){ const vb=document.getElementById('vaseBtn'); if(vb)vb.classList.toggle('on',state.vaseOn); const vc=document.getElementById('vaseCtl'); if(vc)vc.style.display=(state.vaseOn && !state.explore)?'flex':'none'; const vw=document.getElementById('vaseW'); if(vw)vw.value=state.vaseW; const vh=document.getElementById('vaseH'); if(vh)vh.value=state.vaseH; }   // vase Width/Height only in Edit mode
+function generate(){
+  const cb=document.getElementById('createBtn'); const inCreate=cb&&cb.classList.contains('on');
+  if((inCreate || !state.explore) && state.stems.length){ generateFromSelection(); return; }   // EDIT mode / Create: keep the flowers/colours/additions, just revary the arrangement
+  // EXPLORE mode → a fresh, fully-random design within the chosen budget
+  if(cloudSignatures.length && Math.random()<0.22){                                  // sometimes feature a florist signature
+    const fresh=cloudSignatures.filter(s=> s.id!==_lastSigId || cloudSignatures.length===1);
+    if(fresh.length){ const deals=fresh.filter(s=>s.sale_price!=null); const pick=(deals.length&&Math.random()<0.4)?deals[rand(deals.length)]:fresh[rand(fresh.length)]; _lastSigId=pick.id; pushHistory(); state.vaseOn=false; syncVaseUI(); applyDesign(pick); return; }
+  }
+  pushHistory();
+  if(WRAPPERS.length)state.wrapper=WRAPPERS[(Math.random()*WRAPPERS.length)|0].id;    // random wrapper
+  state.vaseOn=Math.random()<0.35;                                                    // ~1 in 3 comes in a vase
+  if(state.vaseOn){ state.vaseW=0.85+Math.random()*0.45; state.vaseH=0.8+Math.random()*0.5; }
+  state.bowColor=null;   // explore keeps the wrapper's natural bow (no random recolor)
+  syncVaseUI();
+  const budEl=document.getElementById('budget'); generateToBudget(budEl?(parseInt(budEl.value,10)||45):45);          // fill to the chosen budget with random offered flowers
+  playSparkle('burst'); playSound('chime');
+}
+// Presets (Dozen / 2 Dozen / 50): a FRESH bouquet of n flowers using the current flower mix (or roses)
+function genPreset(n){
+  pushHistory();
+  state.stems=[];
+  for(let i=0;i<Math.max(3,n);i++)state.stems.push(makeStem('smallrose'));   // Dozen / 2 Dozen / 50 Roses default to small roses
+  nameThisBouquet();
+  afterChange(); playSparkle('burst'); playSound('chime');
+}
+
+/* ---------------- pricing ---------------- */
+function priceOf(){
+  let total=WRAPPERS.find(w=>w.id===state.wrapper).price, counts={};
+  for(const st of state.stems){ const f=FLOWERS.find(x=>x.id===st.id); total+=f.price; counts[st.id]=(counts[st.id]||0)+1; }
+  return {total,counts};
+}
+function updatePrice(){
+  const sg=activeSig(); const total = sg ? sg.price : priceOf().total;
+  const a=document.getElementById('amt'); if(a)a.textContent='$'+total;
+  const c=document.getElementById('cnt'); if(c)c.textContent=state.stems.length+' stem'+(state.stems.length===1?'':'s');
+  const rb=document.getElementById('reserve'); if(rb)rb.textContent='Order · $'+total;
+  const bn=document.getElementById('bqName'); if(bn){ if(state.sigName){ if(sg){ bn.innerHTML='<span class="sigtag">✦ Signature'+(sg.orig!=null?' · Deal':'')+'</span>'+escHtml(state.sigName)+(state.sigShop?'<span class="bqby">by '+escHtml(state.sigShop)+'</span>':''); bn.className='on gold'; } else { bn.textContent=state.sigName; bn.className='on bur'; } } else { bn.textContent=''; bn.className=''; } }
+  const pb=document.getElementById('sigPhotosBtn'); if(pb)pb.style.display=(sg && Array.isArray(state.sigPhotos) && state.sigPhotos.length)?'block':'none';
+}
+
+/* ---------------- UI ---------------- */
+// a varied LIGHT contrasting backdrop per flower (pink, yellow, blue, purple, mint, peach, grey, teal …)
+const THUMB_BGS=['#d6e9cf','#cfe8d4','#dcecc9','#cde7cf','#d3ebd6','#e0eccb','#c9e6cd','#d8ead2'];   // soft mint/sage greens
+function thumbBg(def){ const s=String((def&&def.id)||(def&&def.dot)||''); let h=5381; for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0; return THUMB_BGS[h%THUMB_BGS.length]; }
+function chip(container,def,kind,selected,onTap,onRemove){
+  const b=document.createElement('button'); b.className='chip'+(selected?' on':''); b.dataset.id=def.id;
+  b.innerHTML='<div class="sw" style="background:'+thumbBg(def)+'">'+(def.filler?'❀':'')+'</div>'+
+              (kind==='count'?'<div class="count">0</div><div class="minus">−</div>':'<div class="tick">✓</div>')+
+              '<div class="nm">'+def.name+'</div>';
+  b.onclick=()=>onTap(b);
+  if(kind==='count'){ const mn=b.querySelector('.minus'); if(mn)mn.onclick=(e)=>{ e.stopPropagation(); if(onRemove)onRemove(); }; }
+  container.appendChild(b); return b;
+}
+function updateCounts(){
+  const counts={}; state.stems.forEach(s=>counts[s.id]=(counts[s.id]||0)+1);
+  document.querySelectorAll('#flowers .chip').forEach(b=>{
+    const n=counts[b.dataset.id]||0;
+    b.classList.toggle('has',n>0);
+    const c=b.querySelector('.count'); if(c)c.textContent=n;
+  });
+}
+// build the flower chips from ONLY the flowers the owner has enabled
+function buildFlowerChips(){
+  const fl=document.getElementById('flowers'); if(!fl)return; fl.innerHTML='';
+  FLOWERS.filter(f=>flowerOn(f.id)).forEach(f=>chip(fl,f,'count',false,()=>openPreview(f),()=>removeFlower(f.id)));
+  updateCounts();
+}
+// OWNER settings panel + hidden gate (long-press the stage's top-left corner ~1.1s)
+let ownerWired=false;
+function installOwner(){
+  const owner=document.getElementById('owner'); if(!owner)return;
+  const bd=document.getElementById('ownBackdrops'); bd.innerHTML='';
+  Object.keys(BACKDROPS).forEach(id=>{ const b=document.createElement('button'); b.className='ownBd'+(shop.backdrop===id?' on':''); b.title=id; b.style.background=BACKDROPS[id];
+    b.onclick=()=>{ shop.backdrop=id; shop.backdropCustom=null; applyBackdrop(); saveShop(); document.querySelectorAll('.ownBd').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }; bd.appendChild(b); });
+  const spot=document.getElementById('ownSpot'); spot.checked=!!shop.spotlight;
+  spot.onchange=()=>{ shop.spotlight=spot.checked; applyBackdrop(); saveShop(); };
+  const bdc=document.getElementById('ownBdCustom'); bdc.value=shop.backdropCustom||'#e9e2d3';
+  bdc.oninput=()=>{ shop.backdropCustom=bdc.value; applyBackdrop(); saveShop(); document.querySelectorAll('.ownBd').forEach(x=>x.classList.remove('on')); };
+  document.getElementById('ownBdClear').onclick=()=>{ shop.backdropCustom=null; applyBackdrop(); saveShop(); document.querySelectorAll('.ownBd').forEach(x=>x.classList.toggle('on',x.title===shop.backdrop)); };
+  const osn=document.getElementById('ownShopName'); if(osn){ osn.value=shop.name||''; osn.oninput=()=>{ shop.name=osn.value.trim()||null; saveShop(); }; }
+  const br=document.getElementById('ownBright'); br.value=(shop.brightness!=null?shop.brightness:1.04); br.oninput=()=>{ shop.brightness=parseFloat(br.value); applyLighting(); saveShop(); };
+  const wm=document.getElementById('ownWarm'); wm.value=(shop.warmth||0); wm.oninput=()=>{ shop.warmth=parseFloat(wm.value); applyLighting(); saveShop(); };
+  const shd=document.getElementById('ownShadow'); shd.value=(shop.shadow!=null?shop.shadow:0.32); shd.oninput=()=>{ shop.shadow=parseFloat(shd.value); applyShadow(); saveShop(); };
+  const amb=document.getElementById('ownAmb'); amb.value=(shop.ambient!=null?shop.ambient:0.95); amb.oninput=()=>{ shop.ambient=parseFloat(amb.value); applyLighting(); saveShop(); };
+  const ang=document.getElementById('ownAngle'); ang.value=(shop.lightAngle!=null?shop.lightAngle:0.9); ang.oninput=()=>{ shop.lightAngle=parseFloat(ang.value); applyLighting(); saveShop(); };
+  let lastBgName='background.jpg';
+  const fi=document.getElementById('ownBdImg'); fi.onchange=()=>{ const f=fi.files&&fi.files[0]; if(!f)return; lastBgName=((f.name||'background').replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]+/gi,'-').toLowerCase()||'background')+'.jpg'; const rd=new FileReader(); rd.onload=()=>downscaleImage(rd.result,1280,d=>{ shop.backdropImage=d; applyBackdrop(); try{saveShop();}catch(e){} }); rd.readAsDataURL(f); };
+  document.getElementById('ownBdImgClear').onclick=()=>{ shop.backdropImage=null; applyBackdrop(); saveShop(); fi.value=''; };
+  document.getElementById('ownBdDownload').onclick=()=>{ const img=shop.backdropImage; if(!img||img.indexOf('data:')!==0){ alert('Upload a photo first with the Image button above.'); return; }
+    const a=document.createElement('a'); a.href=img; a.download='background-1.jpg'; document.body.appendChild(a); a.click(); a.remove();
+    alert('Saved "background-1.jpg".\n\n1) Put it in your site\'s "backgrounds" folder.\n2) If background-1 already exists, rename this to background-2.jpg (up to 8).\n3) In GitHub Desktop: Commit, then Push.\n\nIt shows up automatically — nothing to edit.'); };
+  function probeBackgrounds(){ const c=document.getElementById('ownBgList'); if(!c)return; c.innerHTML='';
+    for(let i=1;i<=8;i++){ (function(n){ const url='backgrounds/background-'+n+'.jpg', im=new Image();
+      im.onload=()=>{ const btn=document.createElement('button'); btn.title='Background '+n; btn.style.cssText='width:50px;height:34px;border-radius:7px;border:1px solid var(--line);cursor:pointer;flex:0 0 auto;background:url("'+url+'") center/cover';
+        btn.onclick=()=>{ shop.backdropImage=url; applyBackdrop(); saveShop(); }; c.appendChild(btn); };
+      im.src=url; })(i); } }   // lazy: only runs when the owner opens settings → no 404s for customers
+  const dm=document.getElementById('ownDim'); dm.value=(shop.bgDim||0); dm.oninput=()=>{ shop.bgDim=parseFloat(dm.value); applyBackdrop(); saveShop(); };
+  const frChk=document.getElementById('ownFrame'); frChk.checked=!!shop.frameOn; frChk.onchange=()=>{ shop.frameOn=frChk.checked; applyFrame(); saveShop(); };
+  document.getElementById('ownFrameShape').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; shop.frameShape=b.dataset.s; document.querySelectorAll('#ownFrameShape .ownSh').forEach(x=>x.classList.toggle('on',x.dataset.s===shop.frameShape)); applyFrame(); saveShop(); });
+  document.querySelectorAll('#ownFrameShape .ownSh').forEach(x=>x.classList.toggle('on',x.dataset.s===(shop.frameShape||'oval')));
+  const frC=document.getElementById('ownFrameColor'); frC.value=shop.frameColor||'#f3ece0'; frC.oninput=()=>{ shop.frameColor=frC.value; applyFrame(); saveShop(); };
+  const frS=document.getElementById('ownFrameSize'); frS.value=(shop.frameSize!=null?shop.frameSize:0.7); frS.oninput=()=>{ shop.frameSize=parseFloat(frS.value); applyFrame(); saveShop(); };
+  const frO=document.getElementById('ownFrameOp'); frO.value=(shop.frameOpacity!=null?shop.frameOpacity:0.92); frO.oninput=()=>{ shop.frameOpacity=parseFloat(frO.value); applyFrame(); saveShop(); };
+  const markSound=()=>{ const p=shop.soundPool||[]; document.querySelectorAll('#ownSound .ownSh').forEach(x=>x.classList.toggle('on', x.dataset.fx==='off'?p.length===0:p.indexOf(x.dataset.fx)>=0)); };
+  document.getElementById('ownSound').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; const fx=b.dataset.fx; shop.soundPool=shop.soundPool||[];
+    if(fx==='off'){ shop.soundPool=[]; } else { const i=shop.soundPool.indexOf(fx); if(i>=0)shop.soundPool.splice(i,1); else { shop.soundPool.push(fx); playSound(fx); } }
+    markSound(); saveShop(); });
+  markSound();
+  const markSpark=()=>{ document.querySelectorAll('#ownSparkle .ownSh').forEach(x=>x.classList.toggle('on',x.dataset.sp===(shop.sparkleFx||'burst'))); };
+  document.getElementById('ownSparkle').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return; shop.sparkleFx=b.dataset.sp; markSpark(); saveShop(); playSparkle(shop.sparkleFx); });
+  markSpark();
+  const ff=document.getElementById('ownFlowers'); ff.innerHTML='';
+  FLOWERS.forEach(f=>{ const l=document.createElement('label'); const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=flowerOn(f.id);
+    cb.onchange=()=>{ shop.flowers[f.id]=cb.checked; saveShop(); buildFlowerChips(); }; l.appendChild(cb); l.appendChild(document.createTextNode(' '+f.name)); ff.appendChild(l); });
+  document.getElementById('ownDone').onclick=()=>owner.classList.remove('on');
+  // ---- Florist account (Supabase) ----
+  const flStatus=document.getElementById('flStatus'), flLoginBox=document.getElementById('flLogin'), flAcctBox=document.getElementById('flAccount');
+  function flRender(){ if(flUser){ flLoginBox.style.display='none'; flAcctBox.style.display='block'; flStatus.textContent='Logged in: '+(flUser.email||''); } else { flLoginBox.style.display='block'; flAcctBox.style.display='none'; if(!/(failed|Creating|Logging|Saving)/.test(flStatus.textContent)) flStatus.textContent=sb?'Not logged in.':'Cloud unavailable.'; } }
+  flRefresh().then(()=>{ flRender(); if(flUser)refreshSigs(); });
+  document.getElementById('flSignupBtn').onclick=async()=>{ if(!sb){flStatus.textContent='Cloud unavailable.';return;} const e=document.getElementById('flEmail').value.trim(), p=document.getElementById('flPass').value; flStatus.textContent='Creating account…'; try{ const {error}=await sb.auth.signUp({email:e,password:p}); if(error)throw error; await flRefresh(); flRender(); flStatus.textContent=flUser?'Account created & logged in.':'Account created — confirm via the email we sent, then Log in.'; }catch(err){ flStatus.textContent='Sign up failed: '+err.message; } };
+  document.getElementById('flLoginBtn').onclick=async()=>{ if(!sb){flStatus.textContent='Cloud unavailable.';return;} const e=document.getElementById('flEmail').value.trim(), p=document.getElementById('flPass').value; flStatus.textContent='Logging in…'; try{ const {error}=await sb.auth.signInWithPassword({email:e,password:p}); if(error)throw error; await flRefresh(); flRender(); refreshSigs(); const cfg=await shopLoadCloud(); if(cfg){ _lsShop=cfg; mergeShop(); applyBackdrop();applyLighting();applyShadow();applyFrame();buildFlowerChips(); saveShop(); flStatus.textContent='Logged in — loaded your saved shop.'; } }catch(err){ flStatus.textContent='Login failed: '+err.message; } };
+  document.getElementById('flLogoutBtn').onclick=async()=>{ try{ await sb.auth.signOut(); }catch(e){} flUser=null;
+    _lsShop=null; try{ localStorage.removeItem('bloom_shop'); }catch(e){}   // forget this browser's owner edits → back to the public/default look
+    mergeShop(); applyBackdrop();applyLighting();applyShadow();applyFrame();autoBackground();buildFlowerChips();
+    flRender(); flStatus.textContent='Logged out — back to the default look.'; };
+  document.getElementById('flSaveBtn').onclick=async()=>{ flStatus.textContent='Saving…'; try{ await shopSaveCloud(); flStatus.textContent='✓ Saved to your account — loads on any device when you log in.'; }catch(err){ flStatus.textContent='Save failed: '+err.message; } };
+  document.getElementById('flImgBtn').onclick=async()=>{ const img=shop.backdropImage; if(!img||img.indexOf('data:')!==0){ flStatus.textContent='Upload a photo with the Image button first.'; return; } flStatus.textContent='Uploading image…'; try{ const url=await imageUploadCloud(img); shop.backdropImage=url; applyBackdrop(); saveShop(); await shopSaveCloud(); flStatus.textContent='✓ Image uploaded — saved to your account.'; }catch(err){ flStatus.textContent='Image upload failed: '+err.message; } };
+  const sigStatus=document.getElementById('sigStatus'); let _sigPhotoTarget=null;
+  async function refreshSigs(){ const c=document.getElementById('sigList'); if(!c)return; c.innerHTML=''; let list=[]; try{ list=await sigList(); }catch(e){ return; }
+    list.forEach(s=>{ const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--line);border-radius:7px;padding:5px 7px';
+      const nm=document.createElement('span'); nm.style.flex='1'; nm.textContent=s.name; row.appendChild(nm);
+      const pr=document.createElement('b'); if(s.sale_price!=null){ pr.innerHTML='$'+s.sale_price+' <span style="opacity:.5;font-weight:400;text-decoration:line-through">$'+(s.price!=null?s.price:0)+'</span>'; } else { pr.textContent='$'+(s.price!=null?s.price:0); } row.appendChild(pr);
+      const ph=document.createElement('button'); ph.textContent='📷'+(s.photos&&s.photos.length?(' '+s.photos.length):''); ph.title='Add real sample photos'; ph.style.cssText='border:none;background:none;cursor:pointer;font-size:13px'; ph.onclick=()=>{ _sigPhotoTarget=s.id; document.getElementById('sigPhotoFile').click(); }; row.appendChild(ph);
+      const del=document.createElement('button'); del.textContent='✕'; del.title='Delete'; del.style.cssText='border:none;background:none;color:#c33;cursor:pointer;font-size:13px'; del.onclick=async()=>{ try{ await sigDelete(s.id); refreshSigs(); }catch(e){} }; row.appendChild(del);
+      c.appendChild(row); }); }
+  document.getElementById('sigSaveBtn').onclick=async()=>{ if(!flUser){ sigStatus.textContent='Log in first.'; return; } const nm=document.getElementById('sigName').value.trim(); const pr=parseFloat(document.getElementById('sigPrice').value)||0; const dlv=document.getElementById('sigDeal').value; const sale=(dlv!==''&&!isNaN(parseFloat(dlv)))?parseFloat(dlv):null; if(!nm){ sigStatus.textContent='Give it a name first.'; return; } sigStatus.textContent='Saving…'; try{ await sigSave(nm,pr,sale); document.getElementById('sigName').value=''; document.getElementById('sigPrice').value=''; document.getElementById('sigDeal').value=''; sigStatus.textContent='✓ Saved "'+nm+'".'; refreshSigs(); }catch(err){ sigStatus.textContent='Failed: '+err.message; } };
+  document.getElementById('sigPhotoFile').onchange=async function(){ const files=this.files; if(!files||!files.length||!_sigPhotoTarget)return; sigStatus.textContent='Uploading photos…'; try{ await sigAddPhotos(_sigPhotoTarget, files); sigStatus.textContent='✓ Sample photos added.'; refreshSigs(); }catch(e){ sigStatus.textContent='Photo upload failed: '+e.message; } this.value=''; };
+  document.getElementById('ownExport').onclick=()=>{ const a=document.createElement('a'); a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(shop,null,2)); a.download='shop.json'; document.body.appendChild(a); a.click(); a.remove();
+    alert('Saved "shop.json".\n\n1) Put it in your site\'s MAIN folder (next to index.html).\n2) In GitHub Desktop: Commit, then Push.\n\nNow every device & customer sees these exact settings — background, lighting, frame, sounds, and which flowers are offered.'); };
+  const ghc=ghCfg();
+  const ghR=document.getElementById('ghRepo'); ghR.value=ghc.repo||guessRepo(); if(!ghc.repo&&ghR.value){ const c=ghCfg(); c.repo=ghR.value; ghSave(c); }
+  ghR.oninput=()=>{ const c=ghCfg(); c.repo=ghR.value.trim(); ghSave(c); };
+  const ghT=document.getElementById('ghToken'); ghT.value=ghc.token||''; ghT.oninput=()=>{ const c=ghCfg(); c.token=ghT.value.trim(); ghSave(c); };
+  const ghS=document.getElementById('ghStatus');
+  document.getElementById('ghPublish').onclick=()=>publishBackground(ghS);
+  document.getElementById('ghPublishAll').onclick=()=>publishSettings(ghS);
+  if(!ownerWired){ ownerWired=true;
+    const logo=document.getElementById('brandLogo'); let t=null,sx=0,sy=0;
+    if(logo){
+      logo.addEventListener('pointerdown',e=>{ sx=e.clientX; sy=e.clientY; t=setTimeout(()=>{ owner.classList.add('on'); probeBackgrounds(); }, 1000); });   // press the logo ~1s → hidden owner menu
+      const cancel=()=>{ if(t){clearTimeout(t);t=null;} };
+      logo.addEventListener('pointerup',cancel); logo.addEventListener('pointercancel',cancel); logo.addEventListener('pointerleave',cancel);
+      logo.addEventListener('pointermove',e=>{ if(t && Math.hypot(e.clientX-sx,e.clientY-sy)>12)cancel(); });
+    }
+  }
+}
+function buildUI(){
+  installGizmo();
+  const bp=document.getElementById('bowPicker');
+  if(bp)[['None',null]].concat(BOWS.map(b=>[b.name,b.id])).forEach(([nm,id])=>{
+    const b=document.createElement('button'); b.textContent=nm; b.title=nm;
+    b.style.cssText='border:1px solid var(--line);border-radius:14px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--muted)';
+    const paint=on=>{ b.style.background=on?'var(--brand)':'#fff'; b.style.color=on?'#fff':'var(--muted)'; b.style.borderColor=on?'var(--brand)':'var(--line)'; };
+    paint((state.bow||null)===(id||null));
+    b.onclick=()=>{ state.bow=id; document.querySelectorAll('#bowPicker button').forEach(x=>{x.style.background='#fff';x.style.color='var(--muted)';x.style.borderColor='var(--line)';}); paint(true); rebuild(); saveState(); };
+    bp.appendChild(b);
+  });
+  const bc=document.getElementById('bowColors');
+  if(bc)[['Natural',null],['Red','#c0392b'],['Pink','#e87aa6'],['Gold','#e0a92b'],['Purple','#8e5bb0'],['Blue','#5b7cc4'],['Sage','#8a9a6a']].forEach(([nm,hex])=>{
+    const b=document.createElement('button'); b.title=nm;
+    b.style.cssText='width:24px;height:24px;border-radius:50%;cursor:pointer;border:1px solid var(--line);padding:0;'+(hex?('background:'+hex):'background:repeating-linear-gradient(45deg,#efe9dd,#efe9dd 3px,#ddd5c5 3px,#ddd5c5 6px)');
+    if((state.bowColor||null)===(hex||null)){ b.style.outline='2px solid var(--brand)'; b.style.outlineOffset='1px'; }
+    b.onclick=()=>{ state.bowColor=hex; document.querySelectorAll('#bowColors button').forEach(x=>{x.style.outline='';}); b.style.outline='2px solid var(--brand)'; b.style.outlineOffset='1px'; rebuild(); saveState(); };
+    bc.appendChild(b);
+  });
+  const wcb=document.getElementById('wrapColors');
+  if(wcb)[['Natural',null],['White','#f4f1ea'],['Blush','#f0d3d8'],['Pink','#e87aa6'],['Red','#c0392b'],['Peach','#f0b07a'],['Gold','#e0a92b'],['Sage','#9aa97e'],['Green','#5f8a5a'],['Sky','#7ec3e6'],['Blue','#5b7cc4'],['Navy','#2c3e7a'],['Lavender','#b79de0'],['Plum','#7a3b6b'],['Charcoal','#4a4a52']].forEach(([nm,hex])=>{
+    const b=document.createElement('button'); b.title=nm;
+    b.style.cssText='width:24px;height:24px;border-radius:50%;cursor:pointer;border:1px solid var(--line);padding:0;'+(hex?('background:'+hex):'background:repeating-linear-gradient(45deg,#efe9dd,#efe9dd 3px,#ddd5c5 3px,#ddd5c5 6px)');
+    if((state.wrapColor||null)===(hex||null)){ b.style.outline='2px solid var(--brand)'; b.style.outlineOffset='1px'; }
+    b.onclick=()=>{ state.wrapColor=hex; document.querySelectorAll('#wrapColors button').forEach(x=>{x.style.outline='';}); b.style.outline='2px solid var(--brand)'; b.style.outlineOffset='1px'; rebuild(); saveState(); };
+    wcb.appendChild(b);
+  });
+  const wraps=document.getElementById('wraps');
+  WRAPPERS.forEach(w=>chip(wraps,w,'select',w.id===state.wrapper,(b)=>{
+    state.wrapper=w.id;
+    Array.prototype.forEach.call(wraps.children,c=>c.classList.remove('on')); b.classList.add('on');
+    updatePrice(); rebuild(); saveState();
+  }));
+  buildFlowerChips();
+  applyBackdrop(); applyLighting(); applyShadow(); applyFrame(); installOwner();
+  document.getElementById('presets').addEventListener('click',e=>{
+    const btn=e.target.closest('button'); if(!btn)return;
+    state.count=parseInt(btn.dataset.n,10)||12;
+    Array.prototype.forEach.call(e.currentTarget.children,c=>c.classList.remove('on')); btn.classList.add('on');
+    genPreset(state.count);   // one click → fresh bouquet of that many
+  });
+  const bs=document.getElementById('bsize'), bl=document.getElementById('blift'), bn=document.getElementById('bunch'), sl=document.getElementById('stemlen');
+  bs.value=state.bloomSize; bl.value=state.bloomLift; bn.value=state.bunch; sl.value=state.stemLen;
+  bs.oninput=()=>{ state.bloomSize=parseFloat(bs.value)||1; rebuild(); saveState(); };
+  bl.oninput=()=>{ state.bloomLift=parseFloat(bl.value)||0; rebuild(); saveState(); };
+  bn.oninput=()=>{ state.bunch=parseFloat(bn.value)||0; rebuild(); saveState(); };
+  sl.oninput=()=>{ state.stemLen=parseFloat(sl.value)||1; rebuild(); saveState(); };
+  document.getElementById('clearBtn').onclick=clearBouquet;
+  document.getElementById('gen').onclick=generate;
+  const exB=document.getElementById('exploreBtn'); if(exB)exB.onclick=()=>setExplore(true);
+  const edB=document.getElementById('editBtn'); if(edB)edB.onclick=()=>setExplore(false);
+  setExplore(state.explore);
+  const bud=document.getElementById('budget'), budV=document.getElementById('budgetVal');
+  if(bud){ let bt=null; const showV=()=>{ if(budV)budV.textContent='$'+bud.value; };
+    bud.addEventListener('pointerdown',()=>pushHistory());                              // one undo step for the whole drag
+    bud.oninput=()=>{ showV(); if(bt)clearTimeout(bt); bt=setTimeout(()=>generateToBudget(parseInt(bud.value,10)||0),130); };   // live, but throttled so dragging stays smooth
+    bud.onchange=()=>{ showV(); if(bt){clearTimeout(bt);bt=null;} generateToBudget(parseInt(bud.value,10)||0); playSparkle('burst'); playSound('chime'); };   // settle → final build + flourish
+    showV();
+  }
+  document.getElementById('reserve').onclick=openOrder;
+  const occB=document.getElementById('occBtn'); if(occB)occB.onclick=openOccasions;
+  const occC=document.getElementById('occClose'); if(occC)occC.onclick=()=>document.getElementById('occModal').classList.remove('on');
+  const createB=document.getElementById('createBtn'), _cp=document.getElementById('createPanel'), createD=document.getElementById('createDone');
+  if(createB&&_cp)createB.onclick=()=>setCreate(_cp.style.display==='none');
+  if(createD)createD.onclick=()=>setCreate(false);
+  const rb=document.getElementById('rotBtn');
+  rb.classList.toggle('off',!controls.autoRotate);   // reflect the no-spin default
+  rb.onclick=()=>{ controls.autoRotate=!controls.autoRotate; if(controls.autoRotate)controls.autoRotateSpeed=14; rb.classList.toggle('off',!controls.autoRotate); };   // fast spin
+  const undoB=document.getElementById('undoBtn'); if(undoB)undoB.onclick=()=>undo();
+  const favB=document.getElementById('favBtn'); if(favB)favB.onclick=addFav;
+  const favsB=document.getElementById('favsBtn'); if(favsB)favsB.onclick=openFavs;
+  const fsB=document.getElementById('fsBtn'); if(fsB)fsB.onclick=toggleFullView;
+  const fsG=document.getElementById('fsGen'); if(fsG)fsG.onclick=()=>{ if(state.stems.length)generateFromSelection(); else toast('Add a flower first'); };   // full-view fun: reshuffle ONLY the current bouquet/vase (keeps flowers, colours, wrapper, vase)
+  const vaseB=document.getElementById('vaseBtn'); if(vaseB)vaseB.onclick=()=>{ state.vaseOn=!state.vaseOn; vaseB.classList.toggle('on',state.vaseOn); const vc=document.getElementById('vaseCtl'); if(vc)vc.style.display=(state.vaseOn && !state.explore)?'flex':'none'; rebuild(); toast(state.vaseOn?'Glass vase — preview':'Back to wrapper'); };
+  let _vaseT=null; const _vaseLive=()=>{ if(_vaseT)clearTimeout(_vaseT); _vaseT=setTimeout(()=>rebuild(),90); };   // throttle live rebuilds while dragging
+  const vW=document.getElementById('vaseW'); if(vW)vW.oninput=()=>{ state.vaseW=parseFloat(vW.value); _vaseLive(); };
+  const vH=document.getElementById('vaseH'); if(vH)vH.oninput=()=>{ state.vaseH=parseFloat(vH.value); _vaseLive(); };
+  const shareB=document.getElementById('shareBtn'); if(shareB)shareB.onclick=shareBouquet;
+  const favsC=document.getElementById('favsClose'); if(favsC)favsC.onclick=()=>document.getElementById('favsModal').classList.remove('on');
+  const spB=document.getElementById('sigPhotosBtn'); if(spB)spB.onclick=openPhotos;
+  const pc=document.getElementById('photoClose'); if(pc)pc.onclick=()=>document.getElementById('photoBox').classList.remove('on');
+  document.getElementById('leftBtn').onclick=()=>nudgeSel('dx',-0.10);
+  document.getElementById('rightBtn').onclick=()=>nudgeSel('dx',0.10);
+  document.getElementById('delBtn').onclick=()=>{ if(selectedUid!=null)removeByUid(selectedUid); };
+  document.getElementById('upBtn').onclick=()=>nudgeSel('dy',0.12);
+  document.getElementById('downBtn').onclick=()=>nudgeSel('dy',-0.12);
+  document.getElementById('fwdBtn').onclick=()=>nudgeSel('front',0.30);
+  document.getElementById('backBtn').onclick=()=>nudgeSel('front',-0.30);
+  const cbar=document.getElementById('colorBar');
+  const chead=document.createElement('div'); chead.className='cswHead'; chead.innerHTML='<span>Flower colour</span>';
+  const cdone=document.createElement('button'); cdone.className='cswDone'; cdone.type='button'; cdone.textContent='Done'; cdone.onclick=()=>openColorPicker(false);
+  chead.appendChild(cdone); cbar.appendChild(chead);
+  ['#ffffff','#ffd6e7','#ff7eb0','#ff2e7e','#e6005c',
+   '#ff6b6b','#ff3b3b','#d10019','#a30016','#6e0a1c',
+   '#ff8c42','#ff6a2c','#d65414',
+   '#ffd21f','#f0a500','#b8860b',
+   '#9ad84f','#2c8a4a',
+   '#39dcc0','#0d9488',
+   '#7ec8ff','#3bb6ff','#2563d6','#1f2f7a',
+   '#c79bff','#9b4dff','#6a25c4',
+   '#b51e54','#7a0f3a'].forEach(hex=>{
+    const b=document.createElement('button'); b.className='csw'; b.style.background=hex; b.dataset.hex=hex; b.title='Recolour'; b.onclick=()=>{ setColor(hex); markColorSwatch(hex); };
+    cbar.appendChild(b);
+  });
+  // PC keyboard shortcuts: Delete (remove selected), Ctrl+Z (undo), Ctrl+D (duplicate selected)
+  addEventListener('keydown',e=>{
+    const tag=e.target&&e.target.tagName; if(tag&&/INPUT|TEXTAREA|SELECT/.test(tag))return;
+    if(e.key==='Delete'||e.key==='Backspace'){ if(selectedUid!=null){ e.preventDefault(); removeByUid(selectedUid); } }
+    else if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); undo(); }
+    else if((e.ctrlKey||e.metaKey)&&(e.key==='d'||e.key==='D')){ e.preventDefault(); duplicateSelected(); }
+  });
+}
+
+/* ---------------- flower detail preview ---------------- */
+// preview backdrop that contrasts the flower's current colour (coloured → white, white/pale → mint)
+function previewBg(hex){
+  try{ const c=new THREE.Color(hex), hsl={}; c.getHSL(hsl);
+    if(hsl.s<0.16 || hsl.l>0.82) return '#d6e9cf';   // white / very pale flower → mint
+    return '#ffffff';                                // coloured flower → clean white
+  }catch(e){ return '#ffffff'; }
+}
+function openPreview(def){
+  const variants=def.variants||[{src:def.src,name:def.name}];
+  let vi=variants.findIndex(v=>v===variantSel[def.id]); if(vi<0)vi=0;
+  const cur=()=>state.stems.filter(s=>s.id===def.id).length;
+  const card=document.getElementById('pvcard');
+  function render(){
+    const v=variants[vi]; variantSel[def.id]=v; const multi=variants.length>1;
+    const tk=v.src+(v.color||''); const t=thumbData[tk]||thumbData[def.id];
+    const img='background-color:'+previewBg(v.color||def.dot)+';'+(t?('background-image:url('+t+')'):'');
+    card.innerHTML=
+      '<div class="pvrow">'+
+        (multi?'<button id="pvPrev" class="pvarr">‹</button>':'<span class="pvarr" style="visibility:hidden"></span>')+
+        '<div class="pvimg" style="'+img+'"></div>'+
+        (multi?'<button id="pvNext" class="pvarr">›</button>':'<span class="pvarr" style="visibility:hidden"></span>')+
+      '</div>'+
+      '<h3>'+v.name+'</h3><div class="pvprice">$'+def.price+' each'+(def.filler?' · filler':'')+(multi?' · style '+(vi+1)+'/'+variants.length:'')+'</div>'+
+      '<div class="pvqty"><button id="pvMinus">−</button><input id="pvCount" type="number" min="0" max="'+MAX_STEMS+'" value="'+cur()+'"><button id="pvPlus">+</button></div>'+
+      '<div style="font-size:11px;color:var(--muted);margin:-8px 0 14px">type a number to set exactly</div>'+
+      '<button id="pvClose">Done</button>';
+    const cEl=()=>document.getElementById('pvCount');
+    const sync=()=>{ const c=cEl(); if(c)c.value=cur(); };
+    document.getElementById('pvPlus').onclick=()=>{ addFlower(def.id); sync(); };
+    document.getElementById('pvMinus').onclick=()=>{ removeFlower(def.id); sync(); };
+    cEl().onchange=()=>{ setFlowerCount(def.id,parseInt(cEl().value,10)||0); sync(); };
+    document.getElementById('pvClose').onclick=()=>document.getElementById('preview').classList.remove('on');
+    if(multi){
+      document.getElementById('pvPrev').onclick=()=>{ vi=(vi-1+variants.length)%variants.length; render(); ensureVarThumb(); };
+      document.getElementById('pvNext').onclick=()=>{ vi=(vi+1)%variants.length; render(); ensureVarThumb(); };
+    }
+  }
+  function ensureVarThumb(){ const v=variants[vi], tk=v.src+(v.color||''); if(!thumbData[tk]){ makeThumb(v.src,false,v.color,def.faceRot||0,def.faceTilt||0).then(d=>{ thumbData[tk]=d; if(document.getElementById('preview').classList.contains('on'))render(); }).catch(()=>{}); } }
+  render(); ensureVarThumb();
+  document.getElementById('preview').classList.add('on');
+}
+/* ---------------- order sheet ---------------- */
+function openOrder(){
+  if(!state.stems.length){ toast('Tap Generate to make a bouquet first'); return; }
+  const sg=activeSig(); let rows, total;
+  if(sg){ total=sg.price;
+    rows='<div class="lineitem"><span>'+escHtml(sg.name||'Signature bouquet')+'</span><span>$'+sg.price+'</span></div>';
+    if(sg.orig!=null)rows+='<div class="lineitem" style="opacity:.6"><span>Deal — regular price</span><span style="text-decoration:line-through">$'+sg.orig+'</span></div>';
+    rows+='<div class="lineitem total"><span>Total</span><span>$'+total+'</span></div>';
+  } else {
+    const r=priceOf(), counts=r.counts; total=r.total; const wdef=WRAPPERS.find(w=>w.id===state.wrapper);
+    rows='<div class="lineitem"><span>'+wdef.name+' wrapper</span><span>$'+wdef.price+'</span></div>';
+    FLOWERS.forEach(f=>{ if(counts[f.id])rows+='<div class="lineitem"><span>'+counts[f.id]+'× '+f.name+'</span><span>$'+(counts[f.id]*f.price)+'</span></div>'; });
+    rows+='<div class="lineitem total"><span>Total</span><span>$'+total+'</span></div>';
+  }
+  document.getElementById('sheet').innerHTML=
+    '<h3>Reserve your bouquet</h3>'+rows+
+    '<input id="ordName" placeholder="Your name" autocomplete="name">'+
+    '<input id="ordPhone" placeholder="Phone (for pickup)" inputmode="tel">'+
+    '<div class="acts"><button id="ordCancel">Back</button><button id="ordPlace">Place reservation</button></div>';
+  document.getElementById('ord').classList.add('on');
+  document.getElementById('ordCancel').onclick=()=>document.getElementById('ord').classList.remove('on');
+  document.getElementById('ordPlace').onclick=placeOrder;
+}
+function placeOrder(){
+  const name=(document.getElementById('ordName').value||'').trim();
+  if(!name){ document.getElementById('ordName').focus(); return; }
+  const sg=activeSig(); const r=priceOf(); const total=sg?sg.price:r.total;
+  const order={name,phone:(document.getElementById('ordPhone').value||'').trim(),
+    wrapper:state.wrapper,stems:state.stems.length,counts:r.counts,signature:(sg?sg.name:null),total:total};
+  console.log('ORDER ->',order);   // MVP: log it; later this POSTs to the shop
+  document.getElementById('sheet').innerHTML=
+    '<div id="done"><div class="big">💐</div><h3>Reserved!</h3>'+
+    '<p style="color:var(--muted);font-size:14px">Thanks '+name.replace(/[<>]/g,'')+' - the shop has your bouquet ($'+total+'). Pay at pickup.</p>'+
+    '<div class="acts"><button id="ordCancel">Done</button></div></div>';
+  document.getElementById('ordCancel').onclick=()=>document.getElementById('ord').classList.remove('on');
+}
+
+/* ---------------- misc ---------------- */
+let toastT=null;
+function toast(msg){
+  let t=document.getElementById('toast');
+  if(!t){ t=document.createElement('div'); t.id='toast'; t.style.cssText=
+    'position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:rgba(30,24,16,.92);color:#f4ecd9;'+
+    'padding:10px 16px;border-radius:20px;font-size:13px;z-index:60;max-width:80%;text-align:center'; document.body.appendChild(t); }
+  t.textContent=msg; t.style.opacity='1'; clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity='0',2600);
+}
+function spin(on){ const s=document.getElementById('spin'); s.classList.toggle('on',on); }
+
+/* ---------------- go ---------------- */
+if(location.protocol==='file:'){
+  // Opened by double-clicking the file → browsers block local .glb loads. Tell the user how to fix it.
+  document.getElementById('stage').innerHTML=
+    '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center">'+
+    '<div style="max-width:420px;color:#574a36">'+
+    '<div style="font-size:40px">🌸</div>'+
+    '<h2 style="font-style:italic;margin:8px 0">Open me the right way</h2>'+
+    '<p style="font-size:15px;line-height:1.5;color:#7c7466">This app is open as a <b>file</b>, so the browser blocks the flower files.<br><br>'+
+    'In your browser address bar, go to:</p>'+
+    '<div style="font-size:20px;font-weight:700;background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0">http://localhost:8780/</div>'+
+    '<p style="font-size:12px;color:#9a9182">(The little server must be running — it is on this PC.)</p>'+
+    '</div></div>';
+}else{
+  initThree();
+  { const cv=document.getElementById('c'); if(cv)cv.style.opacity='0'; spin(true); setTimeout(revealStage,3000); }   // keep the canvas hidden (loader showing) until the first framed bouquet, so it doesn't appear low then slide to center
+  ['pointerdown','touchstart','click'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));   // unlock mobile audio on first touch
+  initThumb();
+  const restored=loadState();          // bring back the saved design (wrapper, flowers, sizes)
+  buildUI();
+  autoBackground();
+  if(restored){ updatePrice(); updateCounts(); rebuild(); }
+  else generate();                     // first visit → a ready-made bouquet
+  loadThumbs();  // fill the chips with real pictures (async); flowers that fail stay a colour swatch
+  loadSignatures(); updateFavCount();
+}
+</script>
+</body>
+</html>
