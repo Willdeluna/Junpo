@@ -50,13 +50,23 @@
   #rtTools button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.85);color:#6a6051;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.12)}
   #createDone{display:none;position:absolute;bottom:62px;right:14px;z-index:8;align-items:center;gap:6px;border:none;border-radius:22px;background:linear-gradient(180deg,#82b187,#4f7b55);color:#fff;font-size:15px;font-weight:700;padding:10px 22px;cursor:pointer;box-shadow:0 4px 16px rgba(60,100,60,.4)}
   #createDone:active{transform:translateY(1px)}
-  #fsBtn{position:absolute;bottom:14px;right:14px;z-index:8;border:none;border-radius:22px;background:rgba(38,36,42,.82);color:#fff;font-size:13px;font-weight:700;padding:9px 15px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);display:inline-flex;align-items:center;gap:6px}
+  #fsBtn{position:absolute;bottom:10px;left:12px;z-index:8;border:none;border-radius:22px;background:rgba(38,36,42,.8);color:#fff;font-size:12.5px;font-weight:700;padding:7px 14px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);display:inline-flex;align-items:center;gap:6px}
   #fsBtn:active{transform:translateY(1px)}
-  #fsGen{display:none;position:absolute;bottom:14px;left:14px;z-index:8;border:none;border-radius:22px;background:rgba(38,36,42,.82);color:#fff;font-size:13px;font-weight:700;padding:9px 15px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.3);align-items:center;gap:6px}
-  #fsGen:active{transform:translateY(1px)}
+  #fsBar{position:absolute;left:0;right:0;bottom:0;z-index:8;display:none;align-items:flex-end;gap:10px;padding:12px 14px calc(14px + env(safe-area-inset-bottom));background:none}   /* no card — floating pills; the backdrop shows in the gaps */
+  #fsBar button{border:none;border-radius:24px;font-size:15px;font-weight:800;padding:13px 18px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);white-space:nowrap;flex:0 0 auto}
+  #fsGen2{background:linear-gradient(180deg,#f0903f,#dd6a1e);color:#fff}
+  #fsRight{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+  #fsRight button{padding:10px 16px;font-size:13px}
+  #fsCustom{background:rgba(38,36,42,.85);color:#fff}
+  #fsOrder{background:linear-gradient(180deg,#3f6346,#243b28);color:#fff}
+  #fsSlide{flex:1;display:flex;align-items:center;gap:10px;min-width:0;background:rgba(20,18,16,.5);border-radius:24px;padding:12px 16px;box-shadow:0 4px 16px rgba(0,0,0,.3);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  #fsBudget{flex:1;accent-color:#fff;min-width:50px}
+  #fsBudgetVal{font-weight:800;color:#fff;min-width:42px;text-align:right;font-size:14px}
   #app.immersive #panel{display:none}
   #app.immersive #suggest{display:none}
-  #app.immersive #fsGen{display:inline-flex}   /* generate-this-bouquet button only in full view */
+  #app.immersive #fsBar{display:flex}
+  #app.immersive #fsBtn{display:none}   /* exit lives in the bar (Customize); the top toggle only shows when not in full view */
+  #app.immersive #frame{transform:translate(-50%,calc(-50% - 22px))}   /* small lift so the frame clears the floating pills */
   #tools button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.85);color:#6a6051;
     font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.12)}
   #tools button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
@@ -273,8 +283,12 @@
       <button id="favsBtn" title="Saved bouquets">&#9776;</button>
     </div>
     <button id="createDone">✓ Done</button>
-    <button id="fsBtn" title="See the bouquet full screen">⛶ Full view</button>
-    <button id="fsGen" title="Shuffle this bouquet">✦ Generate</button>
+    <button id="fsBtn" title="Full view / customize">⛶ Full view</button>
+    <div id="fsBar">
+      <button id="fsGen2" title="Surprise me at this price">✦ Generate</button>
+      <div id="fsSlide"><span style="font-size:14px">💰</span><input type="range" id="fsBudget" min="15" max="150" step="5" value="45"><span id="fsBudgetVal">$45</span></div>
+      <div id="fsRight"><button id="fsCustom" title="Edit / more options">✎ Customize</button><button id="fsOrder" title="Order this bouquet">Order</button></div>
+    </div>
     <div id="spin"><div class="ring"></div><div id="spinTxt">Gathering flowers&hellip;</div></div>
     <div id="tools">
       <button id="undoBtn" title="Go back (undo)">&#8617;</button>
@@ -475,6 +489,9 @@ const BOWS=[
 ];
 // bow placement on the wrapper (front faces +x toward the camera) — tunable while we eyeball the fit
 const BOW_Y=0.20, BOW_FWD=0.45, BOW_W=1.20, BOW_ROT_Y=0, BOW_ROT_X=0;
+// palettes used when the price slider randomizes the whole look (every move = a surprise)
+const WRAP_COLS=['#f4f1ea','#f0d3d8','#e87aa6','#c0392b','#f0b07a','#e0a92b','#9aa97e','#5f8a5a','#7ec3e6','#5b7cc4','#2c3e7a','#b79de0','#7a3b6b'];
+const BOW_COLS=['#c0392b','#e87aa6','#e0a92b','#8e5bb0','#5b7cc4','#f4f1ea','#7a0f3a'];
 // Full flower+stem GLBs (stem vs. head is auto-detected at load; stems get clipped at the wrapper line).
 const FLOWERS=[
   {id:'redrose',  name:'Red Rose',      src:local('Red Rose.glb'),        price:4, dot:'#b6303a', filler:false},
@@ -690,7 +707,7 @@ function applyFrame(){ const fr=document.getElementById('frame'); if(!fr)return;
   if(!shop.frameOn){ fr.style.display='none'; return; }
   const st=document.getElementById('stage'); if(!st)return; const W=st.clientWidth||300,H=st.clientHeight||300;
   const s=(shop.frameSize!=null?shop.frameSize:0.7);
-  const w=Math.min(W*0.92,H*0.62)*s, h=Math.min(w*1.5,H*0.96);
+  const imm=document.getElementById('app').classList.contains('immersive'); const w=Math.min(W*0.92,H*0.62)*s, h=Math.min(w*1.5,H*(imm?0.80:0.96));
   fr.style.display='block'; fr.style.width=w+'px'; fr.style.height=h+'px';
   fr.style.background=hexA(shop.frameColor||'#f3ece0',(shop.frameOpacity!=null?shop.frameOpacity:0.92));
   fr.style.borderRadius=(shop.frameShape==='oval')?'50%':((shop.frameShape==='rounded')?'30px':'4px'); }
@@ -845,8 +862,7 @@ function resize(){
 }
 // full-screen view: hide the panel (4 buttons + budget) and the add-flower icons so the bouquet fills the screen
 function toggleFullView(){ const app=document.getElementById('app'); const on=!app.classList.contains('immersive'); app.classList.toggle('immersive',on);
-  const b=document.getElementById('fsBtn'); if(b)b.innerHTML=on?'✕ Exit full view':'⛶ Full view';
-  setTimeout(()=>{ resize(); frame(); },50); }   // let the layout reflow, then re-fit the bouquet to the bigger stage
+  setTimeout(()=>{ resize(); frame(); },50); }   // let the layout reflow, then re-fit the bouquet to the bigger stage (#fsBtn shows only when not immersive; exit lives in the bar)
 function gltf(){
   const l=new THREE.GLTFLoader();
   if(typeof MeshoptDecoder!=='undefined'&&l.setMeshoptDecoder)l.setMeshoptDecoder(MeshoptDecoder);
@@ -914,22 +930,22 @@ const SCULPT_PINK={
 };
 const DELETERS={ natural:SCULPT_NATURAL, pink:SCULPT_PINK, white:defaultCage() };
 // per-wrapper overrides from the lab's saves on this machine (key: lab_deleter_<wrapperId>)
-WRAP_IDS.forEach(id=>{ try{ const _s=JSON.parse(localStorage.getItem('lab_deleter_'+id)||'null'); if(_s&&_s.NH===NH&&_s.NA===NA&&_s.grid&&_s.grid.length===NH*NA){ DELETERS[id]={grid:_s.grid,nodeY:_s.nodeY,open:_s.open||new Array(NH*NA).fill(0),ang:_s.ang||new Array(NH*NA).fill(0),gather:_s.gather||null,rimMul:_s.rimMul||1,bow:_s.bow||null}; } }catch(e){} });
+WRAP_IDS.forEach(id=>{ try{ const _s=JSON.parse(localStorage.getItem('lab_deleter_'+id)||'null'); if(_s&&_s.NH===NH&&_s.NA===NA&&_s.grid&&_s.grid.length===NH*NA){ DELETERS[id]={grid:_s.grid,nodeY:_s.nodeY,open:_s.open||new Array(NH*NA).fill(0),ang:_s.ang||new Array(NH*NA).fill(0),gather:_s.gather||null,rimMul:_s.rimMul||1,bow:_s.bow||null,shell:_s.shell||0}; } }catch(e){} });
 // back-compat: the old single 'lab_deleter' key → Kraft/natural
 try{ const _s=JSON.parse(localStorage.getItem('lab_deleter')||'null'); if(_s&&_s.NH===NH&&_s.grid&&_s.grid.length===NH*NA && !localStorage.getItem('lab_deleter_natural')){ DELETERS.natural={grid:_s.grid,nodeY:_s.nodeY,open:_s.open||new Array(NH*NA).fill(0),ang:_s.ang||new Array(NH*NA).fill(0),rimMul:_s.rimMul||1}; } }catch(e){}
 const SU={ uRimY:{value:1e9}, uBaseY:{value:0}, uGrid:{value:SCULPT_NATURAL.grid.slice()}, uNodeY:{value:SCULPT_NATURAL.nodeY.slice()}, uOpen:{value:SCULPT_NATURAL.open.slice()}, uAng:{value:new Array(NH*NA).fill(0)} };
-function setCage(id){ const c=DELETERS[id]||DELETERS.natural; for(let i=0;i<NH*NA;i++){ SU.uGrid.value[i]=c.grid[i]; SU.uNodeY.value[i]=c.nodeY[i]; SU.uOpen.value[i]=(c.open&&c.open[i])||0; SU.uAng.value[i]=(c.ang&&c.ang[i])||0; } return c; }
+function setCage(id){ const c=DELETERS[id]||DELETERS.natural; for(let i=0;i<NH*NA;i++){ SU.uGrid.value[i]=c.grid[i]+(c.shell||0); SU.uNodeY.value[i]=c.nodeY[i]; SU.uOpen.value[i]=(c.open&&c.open[i])||0; SU.uAng.value[i]=(c.ang&&c.ang[i])||0; } return c; }
 // radius blends only CLOSED nodes; openness from the NEAREST spoke (dd<=0.5) → sharp openings (matches lab.html)
 const FN='float delR(vec3 wp, out float ceilTT){ float tt=clamp((wp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0);'+
   ' float ang=atan(wp.z,wp.x); float af=ang*0.15915494; af=(af-floor(af))*float('+NA+');'+
   ' float r=0.0; float cc=0.0; float wsum=0.0; float cw=0.0; float openNear=0.0;'+
   ' for(int a=0;a<'+NA+';a++){'+
-  '   float sr=uGrid[a]; float so=uOpen[a]; float sg=uAng[a];'+
-  '   for(int h=0;h<'+(NH-1)+';h++){ float y0=uNodeY[h*'+NA+'+a]; float y1=uNodeY[(h+1)*'+NA+'+a];'+
+  '   float sr=uGrid[a]; float so=uOpen[a]; float sg=uAng[a]; float mny=uNodeY[a];'+
+  '   for(int h=0;h<'+(NH-1)+';h++){ float y0=uNodeY[h*'+NA+'+a]; float y1=uNodeY[(h+1)*'+NA+'+a]; mny=max(mny,y1);'+
   '     float g0=uGrid[h*'+NA+'+a]; float g1=uGrid[(h+1)*'+NA+'+a]; float o0=uOpen[h*'+NA+'+a]; float o1=uOpen[(h+1)*'+NA+'+a]; float q0=uAng[h*'+NA+'+a]; float q1=uAng[(h+1)*'+NA+'+a];'+
   '     if(tt>y0 && tt<=y1){ float f=(tt-y0)/max(y1-y0,1e-4); sr=mix(g0,g1,f); so=mix(o0,o1,f); sg=mix(q0,q1,f); } if(tt>y1 && h=='+(NH-2)+'){ sr=g1; so=o1; sg=q1; } }'+
   '   float na=float(a)+sg; float dd=abs(na-af); dd=min(dd,float('+NA+')-dd); float aw=max(0.0,1.0-dd); if(aw<=0.0){ continue; }'+
-  '   cc+=uNodeY['+(NH-1)+'*'+NA+'+a]*aw;'+
+  '   cc+=mny*aw;'+
   '   float cl=1.0-clamp(so,0.0,1.0); r+=sr*aw*cl; cw+=aw*cl; wsum+=aw; if(dd<=0.5){ openNear=max(openNear,clamp(so,0.0,1.0)); } }'+
   ' ceilTT=(wsum>0.0)?cc/wsum:1.0; if(openNear>0.5){ return 50.0; } return (cw>0.0)?r/cw:50.0; }';
 const DECL='varying vec3 vWp;\nuniform float uRimY;uniform float uBaseY;uniform float uGrid['+(NH*NA)+'];uniform float uNodeY['+(NH*NA)+'];uniform float uOpen['+(NH*NA)+'];uniform float uAng['+(NH*NA)+'];\n'+FN+'\n';
@@ -1170,7 +1186,7 @@ async function rebuild(){
     const wdef=WRAPPERS.find(w=>w.id===state.wrapper);
     const wsrc=await loadModel(wdef.src); if(my!==rebuildToken)return;
     while(bouquetGroup.children.length)bouquetGroup.remove(bouquetGroup.children[0]); selRing=null; selectedNode=null;
-    const wrapK=1+Math.min(1,Math.max(0,(state.stems.length-3)/26))*0.34; wrapperNode=fitStanding(wsrc.clone(true),WRAP_H*wrapK);   // bouquet grows gently & incrementally as flowers are added (≈+34% by a full bouquet)
+    const wrapK=1+Math.min(1,Math.max(0,(state.stems.length-3)/30))*0.28; wrapperNode=fitStanding(wsrc.clone(true),WRAP_H*wrapK);   // wrapper grows with price (more flowers ⇒ bigger vessel)
     // REPLACE the glassy transmission material with a fully OPAQUE matte paper so the wrapper truly occludes
     // everything behind it (the GLBs ship as KHR transmission/volume, which renders see-through).
     // The wrapper is ONE fused mesh (bow baked into the paper), so we colorize the height-band where the ribbon ties.
@@ -1199,7 +1215,7 @@ async function rebuild(){
     if(state.vaseOn){ bouquetGroup.remove(wrapperNode); SU.uRimY.value=-1000; arrTop=topY*0.9; G.set(0,topY*0.06,0); }   // gather near the vase floor; the tumbler is auto-sized to the bouquet AFTER the loop
     flowerNodes=[];
     const N=state.stems.length;
-    const sizeK=1-Math.min(0.16,Math.max(0,(N-14)/44)*0.16);   // heads stay close to full size; only very full bouquets nestle a touch smaller (the wrapper itself grows with count for the "bigger bouquet" feel)
+    const sizeK=1-Math.min(0.34,Math.max(0,(N-8)/40)*0.34);   // flowers SHRINK as the bouquet fills — more, smaller blooms pack in; they never grow with price
     for(let i=0;i<N;i++){
       const st=state.stems[i];
       const fdef=FLOWERS.find(f=>f.id===st.id); if(!fdef)continue;
@@ -1248,10 +1264,10 @@ function frame(){
   const c=box.getCenter(new THREE.Vector3()), size=box.getSize(new THREE.Vector3());
   const fov=camera.fov*Math.PI/180, fitH=size.y, fitW=Math.max(size.x,size.z);
   const distH=(fitH*0.5)/Math.tan(fov*0.5), distW=(fitW*0.5)/Math.tan(fov*0.5)/Math.max(0.45,camera.aspect);
-  const nF=(state.stems&&state.stems.length)||0;
-  const marginK=1.72-Math.min(0.40,Math.max(0,(nF-3))/37*0.40);   // small bouquets sit a little smaller in frame; fuller ones fill more of it → it visibly "grows" as you add flowers (always ≥1.32 so nothing clips)
-  const dist=Math.min(controls.maxDistance,Math.max(controls.minDistance,Math.max(distH,distW)*marginK));   // zoom so the WHOLE bouquet fits (headroom so tall stems / vase arrangements never clip the top)
+  const marginK=1.5;   // CONSTANT framing → flowers keep a consistent apparent size (no zoom-in that made them look huge at high prices); bigger bouquets simply zoom out a touch
+  const dist=Math.min(controls.maxDistance,Math.max(controls.minDistance,Math.max(distH,distW)*marginK));   // fit the whole bouquet with steady headroom
   const tgt=new THREE.Vector3(0,c.y,0);
+  if(document.getElementById('app').classList.contains('immersive'))tgt.y-=size.y*0.05;   // nudge the bouquet up a touch so it clears the floating pills
   let dir=new THREE.Vector3().subVectors(camera.position,controls.target); if(dir.lengthSq()<1e-6)dir.set(6.2,0.2,0); dir.normalize();
   controls.target.copy(tgt); camera.position.copy(tgt).addScaledVector(dir,dist); camera.updateProjectionMatrix(); needsOutline=true;
 }
@@ -1442,22 +1458,44 @@ function generateFromSelection(){
 }
 // Build the fullest pretty bouquet that fits a $ budget (wrapper price included). Live from the home slider.
 // Does NOT push history — the slider pushes once per drag so a whole drag is a single undo step.
-function generateToBudget(budget){
+function randVarColor(f){ if(f&&f.variants&&f.variants.length>1&&Math.random()<0.6){ const v=f.variants[(Math.random()*f.variants.length)|0]; return v.color||undefined; } return undefined; }
+function generateToBudget(budget, randomize){
+  // randomize=true (Generate button) → a fresh random wrapper/vase/colours/flowers within the price.
+  // randomize=false (price slider) → keep the current wrapper + look, just fit MORE/FEWER of the same flowers to the price.
+  if(randomize){
+    if(WRAPPERS.length)state.wrapper=WRAPPERS[(Math.random()*WRAPPERS.length)|0].id;
+    state.vaseOn=Math.random()<0.30; if(state.vaseOn){ state.vaseW=0.85+Math.random()*0.5; state.vaseH=0.8+Math.random()*0.55; }
+    state.wrapColor=Math.random()<0.5?WRAP_COLS[(Math.random()*WRAP_COLS.length)|0]:null;
+    state.bow=(!state.vaseOn && BOWS.length && Math.random()<0.45)?BOWS[(Math.random()*BOWS.length)|0].id:null;
+    state.bowColor=(state.bow && Math.random()<0.6)?BOW_COLS[(Math.random()*BOW_COLS.length)|0]:null;
+    syncVaseUI();
+  }
   const wrap=WRAPPERS.find(w=>w.id===state.wrapper)||{price:0};
   let remaining=budget-(wrap.price||0);
   const avail=FLOWERS.filter(f=>flowerOn(f.id));
+  let palette=[];   // {id, src?, color?}
+  if(!randomize && state.stems.length){   // slider: keep the bouquet's existing flowers/colours
+    const seen={}; state.stems.forEach(s=>{ const k=s.id+'|'+(s.color||''); if(!seen[k]){ seen[k]=1; palette.push({id:s.id,src:s.src,color:s.color}); } });
+  }
+  if(!palette.length && avail.length){   // randomize OR empty → fresh focal flowers
+    const focals=avail.filter(f=>!f.filler), pool=focals.length?focals:avail;
+    const A=pool[(Math.random()*pool.length)|0]; palette.push({id:A.id,color:randVarColor(A)});
+    if(randomize && pool.length>1 && Math.random()<0.72){ let B; do{ B=pool[(Math.random()*pool.length)|0]; }while(B===A); palette.push({id:B.id,color:randVarColor(B)}); }
+    if(randomize && pool.length>2 && Math.random()<0.45){ let C,gg=0; do{ C=pool[(Math.random()*pool.length)|0]; }while(palette.some(p=>p.id===C.id)&&gg++<20); if(!palette.some(p=>p.id===C.id))palette.push({id:C.id,color:randVarColor(C)}); }
+  }
   state.stems=[]; selectedUid=null;
-  if(avail.length){
+  if(avail.length && palette.length){
     const cheapest=Math.min.apply(null,avail.map(f=>f.price));
-    const focals=avail.filter(f=>!f.filler), fillers=avail.filter(f=>f.filler);
-    const palette=[]; const pool=focals.length?focals:avail;
-    const A=pool[(Math.random()*pool.length)|0]; palette.push(A);
-    if(pool.length>1 && Math.random()<0.6){ let B; do{ B=pool[(Math.random()*pool.length)|0]; }while(B===A); palette.push(B); }   // sometimes a two-flower mix
+    const fillers=avail.filter(f=>f.filler);
+    const prc=id=>{ const f=FLOWERS.find(x=>x.id===id); return f?f.price:3; };
     let guard=0;
-    while(remaining>=cheapest && state.stems.length<MAX_STEMS && guard++<300){
-      let pick=(fillers.length && Math.random()<0.22)?fillers[(Math.random()*fillers.length)|0]:palette[(Math.random()*palette.length)|0];
-      if(pick.price>remaining){ const aff=avail.filter(f=>f.price<=remaining); if(!aff.length)break; pick=aff[(Math.random()*aff.length)|0]; }
-      state.stems.push(makeStem(pick.id)); remaining-=pick.price;
+    while(remaining>=cheapest && state.stems.length<MAX_STEMS && guard++<400){
+      let pid,pcol,psrc;
+      if(fillers.length && Math.random()<0.18){ const f=fillers[(Math.random()*fillers.length)|0]; pid=f.id; }
+      else { const p=palette[(Math.random()*palette.length)|0]; pid=p.id; pcol=p.color; psrc=p.src; }
+      if(prc(pid)>remaining){ const aff=avail.filter(f=>f.price<=remaining); if(!aff.length)break; const a=aff[(Math.random()*aff.length)|0]; pid=a.id; pcol=undefined; psrc=undefined; }
+      const st=makeStem(pid); if(psrc)st.src=psrc; if(pcol)st.color=pcol;
+      state.stems.push(st); remaining-=prc(pid);
     }
   }
   nameThisBouquet(); afterChange(); showSel();
@@ -1477,7 +1515,7 @@ function generate(){
   if(state.vaseOn){ state.vaseW=0.85+Math.random()*0.45; state.vaseH=0.8+Math.random()*0.5; }
   state.bowColor=null;   // explore keeps the wrapper's natural bow (no random recolor)
   syncVaseUI();
-  const budEl=document.getElementById('budget'); generateToBudget(budEl?(parseInt(budEl.value,10)||45):45);          // fill to the chosen budget with random offered flowers
+  const budEl=document.getElementById('budget'); generateToBudget(budEl?(parseInt(budEl.value,10)||45):45, true);          // Generate = a fresh random design within the budget
   playSparkle('burst'); playSound('chime');
 }
 // Presets (Dozen / 2 Dozen / 50): a FRESH bouquet of n flowers using the current flower mix (or roses)
@@ -1500,6 +1538,7 @@ function updatePrice(){
   const a=document.getElementById('amt'); if(a)a.textContent='$'+total;
   const c=document.getElementById('cnt'); if(c)c.textContent=state.stems.length+' stem'+(state.stems.length===1?'':'s');
   const rb=document.getElementById('reserve'); if(rb)rb.textContent='Order · $'+total;
+  const fro=document.getElementById('fsOrder'); if(fro)fro.textContent='Order · $'+total;
   const bn=document.getElementById('bqName'); if(bn){ if(state.sigName){ if(sg){ bn.innerHTML='<span class="sigtag">✦ Signature'+(sg.orig!=null?' · Deal':'')+'</span>'+escHtml(state.sigName)+(state.sigShop?'<span class="bqby">by '+escHtml(state.sigShop)+'</span>':''); bn.className='on gold'; } else { bn.textContent=state.sigName; bn.className='on bur'; } } else { bn.textContent=''; bn.className=''; } }
   const pb=document.getElementById('sigPhotosBtn'); if(pb)pb.style.display=(sg && Array.isArray(state.sigPhotos) && state.sigPhotos.length)?'block':'none';
 }
@@ -1675,8 +1714,8 @@ function buildUI(){
   const bud=document.getElementById('budget'), budV=document.getElementById('budgetVal');
   if(bud){ let bt=null; const showV=()=>{ if(budV)budV.textContent='$'+bud.value; };
     bud.addEventListener('pointerdown',()=>pushHistory());                              // one undo step for the whole drag
-    bud.oninput=()=>{ showV(); if(bt)clearTimeout(bt); bt=setTimeout(()=>generateToBudget(parseInt(bud.value,10)||0),130); };   // live, but throttled so dragging stays smooth
-    bud.onchange=()=>{ showV(); if(bt){clearTimeout(bt);bt=null;} generateToBudget(parseInt(bud.value,10)||0); playSparkle('burst'); playSound('chime'); };   // settle → final build + flourish
+    bud.oninput=()=>{ showV(); if(bt)clearTimeout(bt); bt=setTimeout(()=>generateToBudget(parseInt(bud.value,10)||0,false),130); };   // live, but throttled so dragging stays smooth (keeps wrapper/look)
+    bud.onchange=()=>{ showV(); if(bt){clearTimeout(bt);bt=null;} generateToBudget(parseInt(bud.value,10)||0,false); playSparkle('burst'); playSound('chime'); };   // settle → final build + flourish
     showV();
   }
   document.getElementById('reserve').onclick=openOrder;
@@ -1692,7 +1731,15 @@ function buildUI(){
   const favB=document.getElementById('favBtn'); if(favB)favB.onclick=addFav;
   const favsB=document.getElementById('favsBtn'); if(favsB)favsB.onclick=openFavs;
   const fsB=document.getElementById('fsBtn'); if(fsB)fsB.onclick=toggleFullView;
-  const fsG=document.getElementById('fsGen'); if(fsG)fsG.onclick=()=>{ if(state.stems.length)generateFromSelection(); else toast('Add a flower first'); };   // full-view fun: reshuffle ONLY the current bouquet/vase (keeps flowers, colours, wrapper, vase)
+  const fsC=document.getElementById('fsCustom'); if(fsC)fsC.onclick=toggleFullView;   // exit full view → reveals the 4 main buttons + Edit
+  const fsG=document.getElementById('fsGen2'); if(fsG)fsG.onclick=()=>{ const bv=document.getElementById('fsBudget'); generateToBudget(bv?(parseInt(bv.value,10)||45):45, true); };   // Generate = random wrapper/vase/flower/colour combo within the price
+  const fsO=document.getElementById('fsOrder'); if(fsO)fsO.onclick=openOrder;
+  const fsBud=document.getElementById('fsBudget'), fsBudV=document.getElementById('fsBudgetVal'), mainBud=document.getElementById('budget');
+  if(fsBud){ let ft=null; const sv=()=>{ if(fsBudV)fsBudV.textContent='$'+fsBud.value; if(mainBud)mainBud.value=fsBud.value; };   // price slider: low → small/cheaper, high → fuller/pricier (keeps the panel slider in sync)
+    fsBud.addEventListener('pointerdown',()=>pushHistory());
+    fsBud.oninput=()=>{ sv(); if(ft)clearTimeout(ft); ft=setTimeout(()=>generateToBudget(parseInt(fsBud.value,10)||0,false),130); };   // price slider keeps the wrapper/look, just changes how many flowers
+    fsBud.onchange=()=>{ sv(); if(ft){clearTimeout(ft);ft=null;} generateToBudget(parseInt(fsBud.value,10)||0,false); playSparkle('burst'); playSound('chime'); };
+    sv(); }
   const vaseB=document.getElementById('vaseBtn'); if(vaseB)vaseB.onclick=()=>{ state.vaseOn=!state.vaseOn; vaseB.classList.toggle('on',state.vaseOn); const vc=document.getElementById('vaseCtl'); if(vc)vc.style.display=(state.vaseOn && !state.explore)?'flex':'none'; rebuild(); toast(state.vaseOn?'Glass vase — preview':'Back to wrapper'); };
   let _vaseT=null; const _vaseLive=()=>{ if(_vaseT)clearTimeout(_vaseT); _vaseT=setTimeout(()=>rebuild(),90); };   // throttle live rebuilds while dragging
   const vW=document.getElementById('vaseW'); if(vW)vW.oninput=()=>{ state.vaseW=parseFloat(vW.value); _vaseLive(); };
@@ -1845,9 +1892,11 @@ if(location.protocol==='file:'){
   buildUI();
   autoBackground();
   if(restored){ updatePrice(); updateCounts(); rebuild(); }
-  else generate();                     // first visit → a ready-made bouquet
+  else { state.wrapper='natural'; state.vaseOn=false; state.wrapColor=null; state.bow=null; state.bowColor=null; state.stems=[makeStem('smallrose')]; generateToBudget(45,false); }   // first visit → a classic rose bouquet at the default price (light + fast)
   loadThumbs();  // fill the chips with real pictures (async); flowers that fail stay a colour swatch
   loadSignatures(); updateFavCount();
+  document.getElementById('app').classList.add('immersive');   // DEFAULT = full-screen shopping view (Customize · price slider · Order); "✎ Customize" reveals the full panel
+  setTimeout(()=>{ resize(); frame(); },90);
 }
 </script>
 </body>
