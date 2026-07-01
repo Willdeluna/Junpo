@@ -10,7 +10,7 @@
   html,body{margin:0;height:100%;overflow:hidden;color:var(--ink);background:#3f4a44}
   /* shop backdrop (drop in a real photo via #backdrop background-image) */
   #backdrop{position:absolute;inset:0;z-index:0;background:
-    radial-gradient(120% 95% at 50% 0%, #eef3f5 0%, #dbe5e9 48%, #c3d0d5 100%);}
+    radial-gradient(130% 100% at 50% 16%, #3684aa 0%, #256d96 48%, #154864 100%);}   /* default ocean-blue backdrop */
   #backdrop::after{content:"";position:absolute;inset:0;background:
     radial-gradient(60% 40% at 50% 16%, rgba(255,255,255,.13), transparent 70%);}
   #vignette{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:1;
@@ -161,7 +161,7 @@
 <div id="raiseCtl"><button id="raiseUp" title="Raise the selected flowers">▲</button><span>Raise</span><button id="raiseDn" title="Lower the selected flowers">▼</button></div>
 
 <div id="bar">
-  <div class="barSec" id="barL">
+  <div class="barSec collapsed" id="barL">
     <div id="shapeCounts"></div>
     <div id="genCol"><button class="btn" id="patternBtn">✿ Pattern</button><button class="btn" id="refresh" title="Show icons → press again to shuffle a new design">✦ New</button></div>
   </div>
@@ -177,7 +177,7 @@
 </div>
 
 <div class="popup leftPop" id="popColor">
-  <label class="ckCustom">Background <input type="color" id="bgColor" value="#dbe5e9"></label>
+  <label class="ckCustom">Background <input type="color" id="bgColor" value="#256d96"></label>
   <label class="ckCustom">Circle <input type="color" id="circleColor" value="#14c0ca"></label>
 </div>
 <div class="popup leftPop" id="popVase">
@@ -310,11 +310,13 @@ const BLOOMS=[
   {id:'hibiscus',  name:'Hibiscus',       src:L('Hibscus.glb'),          dot:'#e34a4a'},
   {id:'ptulip',    name:'Purple Tulip',   src:L('PurpleTulip.glb'),      dot:'#9a6fbf'},
   {id:'yrose',     name:'Yellow Rose',    src:L('YellowRose.glb'),       dot:'#f0c033'},
+  {id:'cherry',    name:'Cherry Blossom', src:L('CherryBlossom.glb'),    dot:'#f0aec4'},
 ];
 const FILLERS={ baby:{src:L('Babies Breathe.glb')}, branch:{src:L('branch.glb')}, yellow:{src:L('YellowFlower.glb')}, pine:{src:L('PineBranch.glb')}, berry:{src:L('RedBerry.glb')}, twig:{src:L('DriedTwig.glb')}, gberry:{src:L('GreenBerry.glb')}, ygold:{src:L('YellowFlower.glb')}, ysilver:{src:L('YellowFlower.glb')}, rball:{src:L('RedBalls.glb')}, bgold:{src:L('RedBalls.glb')}, bsilver:{src:L('RedBalls.glb')}, pcone:{src:L('PineCone.glb')} };
 const SRC={}; BLOOMS.forEach(b=>SRC[b.id]=b.src); Object.keys(FILLERS).forEach(k=>SRC[k]=FILLERS[k].src); SRC.wrapper=L('wrapper1.glb');
 const TINT={}; BLOOMS.forEach(b=>{ if(b.tint)TINT[b.id]=b.tint; });   // default recolor for reused-GLB variants (e.g. Pink Peony from White Peony)
 const SIZEADJ={ hydrangea:0.8, whitehydr:0.8, pcone:0.75 };   // per-item size tweaks (hydrangea −20%, pine cone −25%)
+const PREROT={};   // per-fid stand-upright rotations (cherry's +45° is now baked into its GLB)
 const SHAPES=[
   {id:'rose',  name:'Rose',  petals:8,  pr:0.42, traceN:8,  def:5, flower:'smallrose'},
   {id:'tulip', name:'Tulip', petals:5,  pr:0.50, traceN:5,  def:5, flower:'whiterose'},
@@ -363,7 +365,8 @@ function init(){
   rebuild();
 }
 function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); if(camera){ camera.aspect=w/h;
-  const full=document.body.classList.contains('fullview'); const oy=full?((vase&&vase.visible)?0.205:0.135):0.10;   // full view: push the bouquet+vase up into the empty room above (extra when the vase is on), clear of the Generate button
+  const full=document.body.classList.contains('fullview'), portrait=h>w;
+  const oy = full ? (portrait ? 0.03 : ((vase&&vase.visible)?0.205:0.135)) : 0.10;   // full view: push bouquet up into the room above on wide screens; on a tall phone screen barely shift it (it was sitting too high)
   camera.setViewOffset(w,h,0,Math.round(h*oy),w,h); camera.updateProjectionMatrix(); } }
 // ---- screen-space white "sticker" outline (selected items live on layer 1; rendered to a target, then a border is drawn around their silhouette)
 let selRT,outlineScene,outlineCam,outlineMat; const _v2=new THREE.Vector2();
@@ -415,8 +418,8 @@ function buildEnvTex(){ try{
   const tex=new THREE.CanvasTexture(c); tex.mapping=THREE.EquirectangularReflectionMapping;
   const pm=new THREE.PMREMGenerator(renderer); const env=pm.fromEquirectangular(tex).texture; tex.dispose(); pm.dispose(); return env;
 }catch(e){ return null; } }
-function prepFlower(src,colorHex,finish){
-  const node=src.clone(true); node.updateMatrixWorld(true);
+function prepFlower(src,colorHex,finish,prerot){
+  const node=src.clone(true); if(prerot)node.rotation.z=prerot; node.updateMatrixWorld(true);   // optional pre-rotation to stand a model upright
   const g=new THREE.Group();
   node.traverse(o=>{ if(!(o.isMesh&&o.geometry))return;
     let geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone(); geo=geo.clone(); geo.applyMatrix4(o.matrixWorld);
@@ -451,7 +454,7 @@ function mandalaPoints(o){ const P=[]; mandalaShapes(o).forEach(s=>{ if(o.onePer
 
 // ---- rebuild ----
 const tplCache={};
-async function getTpl(fid,colorHex){ const key=fid+'|'+(colorHex||'nat')+'|v'+_gloss.toFixed(2); if(tplCache[key])return tplCache[key]; const src=await loadModel(SRC[fid]); const t=prepFlower(src,colorHex,FINISH[fid]); tplCache[key]=t; return t; }
+async function getTpl(fid,colorHex){ const key=fid+'|'+(colorHex||'nat')+'|v'+_gloss.toFixed(2); if(tplCache[key])return tplCache[key]; const src=await loadModel(SRC[fid]); const t=prepFlower(src,colorHex,FINISH[fid],PREROT[fid]); tplCache[key]=t; return t; }
 function readUI(){ const counts={}; SHAPES.forEach(s=>{ const el=document.getElementById('cnt_'+s.id); counts[s.id]=el?Math.max(0,+el.value||0):0; });
   const g=id=>+document.getElementById(id).value, on=id=>document.getElementById(id).checked;
   return { counts, flare:g('flare'), size:g('size'),
@@ -611,7 +614,7 @@ document.getElementById('bigmandala').addEventListener('click',e=>{ const cv=e.c
 let _thumbR,_thumbsDone=false;
 async function makeThumb(fid){ try{
   if(!_thumbR){ _thumbR=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true}); _thumbR.setSize(128,128); _thumbR.outputEncoding=THREE.sRGBEncoding; }
-  const src=await loadModel(SRC[fid]); const t=prepFlower(src,TINT[fid]||null,FINISH[fid]);
+  const src=await loadModel(SRC[fid]); const t=prepFlower(src,TINT[fid]||null,FINISH[fid],PREROT[fid]);
   const sc=new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff,0x8a8678,1.15)); const d=new THREE.DirectionalLight(0xffffff,0.95); d.position.set(2,3,3); sc.add(d); sc.add(t);
   const bb=new THREE.Box3().setFromObject(t),c=bb.getCenter(new THREE.Vector3()),sz=bb.getSize(new THREE.Vector3()),rad=Math.max(sz.x,sz.y,sz.z)||1;
   const cam=new THREE.PerspectiveCamera(34,1,0.01,100); cam.position.set(c.x+rad*0.35,c.y+rad*0.95,c.z+rad*1.7); cam.lookAt(c.x,c.y+rad*0.12,c.z);   // 3/4 top view → see the bloom face
@@ -731,6 +734,14 @@ document.getElementById('done').onclick=()=>{ document.getElementById('done').te
 // backdrop canvas colours
 refreshPickers();
 init();
+// open the creator in the big full-view presentation with the vase on (per defaultview.jpg)
+(function openDefault(){
+  vase.visible=true; document.getElementById('tlGlass').classList.add('on'); updateVase();
+  _fullView=true; document.body.classList.add('fullview'); document.getElementById('toolsTL').classList.remove('show');
+  camera.position.set(0,4.7,6.4); controls.target.set(0,1.0,0); controls.update();
+  document.getElementById('fullView').textContent='✕ Exit';
+  resize(); rebuild();
+})();
 </script>
 </body>
 </html>
