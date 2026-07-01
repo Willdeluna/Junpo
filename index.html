@@ -22,6 +22,14 @@
     radial-gradient(120% 90% at 50% 18%,#fbf7ee 0%,#e9e2d3 60%,#ddd5c4 100%)}
   #c{display:block;width:100%;height:100%;touch-action:none;position:relative;z-index:1}
   #frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:0;display:none;pointer-events:none;box-shadow:0 12px 44px rgba(0,0,0,.25)}
+  /* customize/edit view: a clean large mint-green studio disc behind the bouquet (instead of the shop backdrop) */
+  #editDisc{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);width:min(74vw,56vh);height:min(74vw,56vh);border-radius:50%;z-index:0;display:none;pointer-events:none;
+    background:radial-gradient(circle at 50% 42%,#fbfffb 0%,#e9f5e6 52%,#d4ead0 100%);box-shadow:0 14px 44px rgba(60,100,70,.16)}
+  #app.creating #editDisc{display:block}
+  #app.creating #stage{background:#eef3ec}          /* mint studio ONLY in "Create your own"; Explore/Edit keep the regular shop view */
+  #app.creating #panel{max-height:25vh}             /* build menu ~25% so the canvas circle stays large above it */
+  /* create-mode flower/wrapper pickers: a compact wrapping grid you scroll/swipe to see more */
+  #createPanel #flowers,#createPanel #wraps{flex-wrap:wrap;max-height:92px;overflow-x:hidden;overflow-y:auto}
   .ownSh{flex:1;border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px;font-size:11px;cursor:pointer}
   .ownSh.on{background:var(--brand);color:#fff;border-color:var(--brand)}
   #title{position:absolute;top:calc(10px + env(safe-area-inset-top));left:0;right:0;text-align:center;
@@ -276,6 +284,7 @@
 <div id="app">
   <div id="stage">
     <div id="frame"></div>
+    <div id="editDisc"></div>
     <canvas id="c"></canvas>
     <div id="brandLogo"><img src="logo.png" alt="Junpo" draggable="false"></div>
     <div id="rtTools">
@@ -343,7 +352,16 @@
       </div>
       <div class="lbl" style="margin-top:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.65">Customize</div>
       <div style="margin-top:6px">
-        <div class="lbl">Wrapper</div>
+        <div class="lbl">Pattern</div>
+        <div class="seg" id="patternSeg">
+          <button data-pat="natural" class="on">Natural</button>
+          <button data-pat="spiral">Spiral</button>
+          <button data-pat="symmetric">Symmetrical</button>
+          <button data-pat="alternating">Alt. colours</button>
+        </div>
+      </div>
+      <div style="margin-top:6px">
+        <div class="lbl">Wrapper <span style="opacity:.55">— optional, add it anytime</span></div>
         <div class="chips" id="wraps"></div>
       </div>
       <div style="margin-top:6px"><div class="lbl">Wrapper colour</div><div id="wrapColors" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px"></div></div>
@@ -447,6 +465,7 @@
     <div class="lbl" style="margin-top:10px">Signature bouquets <span style="opacity:.6">— your saved designs</span></div>
     <div style="display:flex;gap:6px"><input id="sigName" placeholder="name (e.g. Classic Dozen)" autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px"><input id="sigPrice" type="number" min="0" placeholder="$" style="width:50px;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px"><input id="sigDeal" type="number" min="0" placeholder="deal" title="Optional sale price (a deal to move flowers fast)" style="width:52px;box-sizing:border-box;border:1px solid var(--line);border-radius:7px;padding:7px;font-size:12px"></div>
     <button id="sigSaveBtn" class="ownSh" style="width:100%;margin-top:4px">＋ Save current bouquet as signature</button>
+    <button id="poolSaveBtn" class="ownSh" style="width:100%;margin-top:4px">＋ Save to generator pool <span style="opacity:.6">— no name/price, appears randomly</span></button>
     <div id="sigStatus" style="font-size:11px;opacity:.85;margin:3px 0;min-height:13px"></div>
     <div id="sigList" style="display:flex;flex-direction:column;gap:4px"></div>
     <input id="sigPhotoFile" type="file" accept="image/*" multiple style="display:none">
@@ -461,6 +480,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/libs/meshopt_decoder.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/DRACOLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="wrapper_collision_cage.js"></script>
 <script>
 /* ============================================================
    Bloom - customer bouquet maker (MVP)
@@ -539,6 +559,7 @@ const FLOWERS=[
      {src:local('red_rose_bloom.glb'), name:'Lavender Garden Rose', color:'#b79de0'},
      {src:local('red_rose_bloom.glb'), name:'Burgundy Garden Rose', color:'#7a0f3a'} ]},
   {id:'baby',     name:"Baby's Breath", src:local('Babies Breathe.glb'),  price:2, dot:'#f3f3ee', filler:true},
+  {id:'branch',   name:'Branch',        src:local('branch.glb'),          price:2, dot:'#5f7d4a', filler:true},
 ];
 const variantSel={};   // per-flower id → currently chosen variant src (which style/colour to add)
 // ===== SHOP SETTINGS (owner-controlled; the customer view only shows what's enabled) =====
@@ -560,8 +581,10 @@ async function shopSaveCloud(){ if(!sb||!flUser) throw new Error('Log in first.'
 async function shopLoadCloud(){ if(!sb||!flUser) return null; const {data,error}=await sb.from('shops').select('config').eq('id',flUser.id).maybeSingle(); if(error) throw new Error(error.message); return data?data.config:null; }
 async function imageUploadCloud(dataUrl){ if(!sb||!flUser) throw new Error('Log in first.'); const blob=await (await fetch(dataUrl)).blob(); const path=flUser.id+'/background.jpg'; const {error}=await sb.storage.from('shop-images').upload(path, blob, {upsert:true, contentType:'image/jpeg'}); if(error) throw new Error(error.message); const {data}=sb.storage.from('shop-images').getPublicUrl(path); return data.publicUrl+'?t='+Date.now(); }
 // ---- Signature bouquets: a shop's saved arrangements (name + price + design) ----
-function designSnapshot(){ return {wrapper:state.wrapper,count:state.count,bloomSize:state.bloomSize,bloomLift:state.bloomLift,bunch:state.bunch,stemLen:state.stemLen,trim:state.trim,bowColor:state.bowColor,bow:state.bow,wrapColor:state.wrapColor,gather:state.gather,cuts:state.cuts,stems:state.stems}; }
+function designSnapshot(){ return {wrapper:state.wrapper,wrapOn:state.wrapOn,pattern:state.pattern,count:state.count,bloomSize:state.bloomSize,bloomLift:state.bloomLift,bunch:state.bunch,stemLen:state.stemLen,trim:state.trim,bowColor:state.bowColor,bow:state.bow,wrapColor:state.wrapColor,gather:state.gather,cuts:state.cuts,stems:state.stems}; }
 async function sigSave(name,price,sale){ if(!sb||!flUser) throw new Error('Log in first.'); const d=designSnapshot(); d.sound=(shop.soundPool||[]).slice(); d.sparkle=shop.sparkleFx||'burst'; d.shopName=shop.name||null; const row={shop_id:flUser.id,name:name,price:price,design:d}; if(sale!=null&&!isNaN(sale))row.sale_price=sale; const {error}=await sb.from('signatures').insert(row); if(error) throw new Error(error.message); }
+// Save the CURRENT design into the generator's random pool — no name/price, surfaces as an ordinary generated bouquet (kind='pool').
+async function poolSave(){ if(!sb||!flUser) throw new Error('Log in first.'); const d=designSnapshot(); d.sound=(shop.soundPool||[]).slice(); d.sparkle=shop.sparkleFx||'burst'; d.shopName=shop.name||null; const {error}=await sb.from('signatures').insert({shop_id:flUser.id,name:'',price:0,kind:'pool',design:d}); if(error) throw new Error(error.message); }
 async function sigList(){ if(!sb||!flUser) return []; const {data,error}=await sb.from('signatures').select('*').eq('shop_id',flUser.id).order('created_at',{ascending:false}); if(error) throw new Error(error.message); return data||[]; }
 async function sigDelete(id){ if(!sb||!flUser) throw new Error('Log in first.'); const {error}=await sb.from('signatures').delete().eq('id',id); if(error) throw new Error(error.message); }
 async function sigAddPhotos(sigId, files){ if(!sb||!flUser) throw new Error('Log in first.');
@@ -582,14 +605,17 @@ const OCCASIONS=[{id:'wedding',label:'💍 Wedding'},{id:'birthday',label:'🎂 
 function openOccasions(){ const m=document.getElementById('occModal'), g=document.getElementById('occGrid'); if(!m||!g)return; g.innerHTML=''; OCCASIONS.forEach(o=>{ const b=document.createElement('button'); b.className='occItem'; b.textContent=o.label; b.onclick=()=>{ state.occasion=o.id; m.classList.remove('on'); toast(o.label.replace(/^\S+\s/,'')+' bouquets'); generate(); }; g.appendChild(b); }); m.classList.add('on'); }
 function setCreate(show){ const cp=document.getElementById('createPanel'), cb=document.getElementById('createBtn'), cd=document.getElementById('createDone'); if(!cp)return;
   cp.style.display=show?'block':'none'; if(cb)cb.classList.toggle('on',show); if(cd)cd.style.display=show?'inline-flex':'none';
+  document.getElementById('app').classList.toggle('creating',show);   // mint studio + top-down only here
+  if(!show)sideView();   // leaving Create your own → back to the regular view
   const br=document.getElementById('budgetRow'); if(br)br.style.display=show?'none':'flex';   // budget slider is for auto-generate, hidden while hand-building
   if(show){ const pk=document.getElementById('picker'), aj=document.getElementById('adjust'); if(pk)pk.open=true; if(aj)aj.open=true;
     pushHistory(); state.stems=[]; state.sigName=null; state.sigShop=null; state.sigPrice=null; state.sigOrig=null; state.sigPhotos=[]; _sigKey=null; afterChange();   // blank canvas
+    topView();   // hand-building → look down from the top
     if(cp.scrollIntoView)cp.scrollIntoView({behavior:'smooth',block:'nearest'}); } }
 // ---- Signatures in the generator + customer favorites ----
 let cloudSignatures=[], _sigKey=null, _lastSigId=null, _sigQueue=[];
 function escHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function designKey(){ return JSON.stringify({w:state.wrapper,b:state.bowColor||'',wc:state.wrapColor||'',st:(state.stems||[]).map(s=>[s.id,s.src||'',s.color||'',Math.round((s.spin||0)*100),Math.round((s.scale||1)*100),Math.round((s.jy||0)*100),Math.round((s.jphi||0)*100)])}); }
+function designKey(){ return JSON.stringify({w:state.wrapper,wo:state.wrapOn?1:0,b:state.bowColor||'',wc:state.wrapColor||'',st:(state.stems||[]).map(s=>[s.id,s.src||'',s.color||'',Math.round((s.spin||0)*100),Math.round((s.scale||1)*100),Math.round((s.jy||0)*100),Math.round((s.jphi||0)*100)])}); }
 function activeSig(){ if(state.sigPrice!=null && _sigKey && designKey()===_sigKey) return {price:state.sigPrice, orig:state.sigOrig, name:state.sigName}; state.sigPrice=null; state.sigOrig=null; _sigKey=null; return null; }   // signature pricing holds only while the design is unchanged
 function loadSignatures(){ if(!sb)return; sb.from('signatures').select('*').order('created_at',{ascending:false}).then(r=>{ if(r&&!r.error&&r.data)cloudSignatures=r.data; }); }
 // deal a fresh signature each call — shuffled deck, never the same one twice in a row
@@ -600,15 +626,19 @@ function nextSignature(){ const list=cloudSignatures; if(!list.length)return nul
   if(pick.id===_lastSigId && list.length>1){ const alt=list.filter(s=>s.id!==_lastSigId); pick=alt[rand(alt.length)]; }
   _lastSigId=pick.id; return pick; }
 function applyDesign(sig){ const d=(sig&&sig.design)?sig.design:sig; if(!d)return; pushHistory();
-  if(d.wrapper)state.wrapper=d.wrapper; if(d.count)state.count=d.count;
+  if(d.wrapper)state.wrapper=d.wrapper; state.wrapOn=(d.wrapOn!=null)?d.wrapOn:true; state.pattern=d.pattern||'natural'; if(d.count)state.count=d.count;   // saved owner/signature designs are wrapped by default (older ones predate wrapOn → treat as wrapped)
   if(d.bloomSize!=null)state.bloomSize=d.bloomSize; if(d.bloomLift!=null)state.bloomLift=d.bloomLift; if(d.bunch!=null)state.bunch=d.bunch; if(d.stemLen!=null)state.stemLen=d.stemLen; if(d.trim!=null)state.trim=d.trim;
   state.bowColor=d.bowColor; state.bow=d.bow||null; state.wrapColor=d.wrapColor||null; state.gather=d.gather||null; state.cuts=d.cuts||[];
   state.stems=(d.stems||[]).map(s=>Object.assign({},s,{uid:uidCounter++}));
-  state.sigName=(sig&&sig.name)||null;
-  state.sigShop=(d&&d.shopName)||null;
-  state.sigPhotos=(sig&&Array.isArray(sig.photos))?sig.photos:[];
-  const reg=(sig&&sig.price!=null)?sig.price:null, sale=(sig&&sig.sale_price!=null)?sig.sale_price:null;
-  state.sigPrice=(sale!=null?sale:reg); state.sigOrig=(sale!=null?reg:null); _sigKey=designKey();
+  if(sig&&sig.kind==='pool'){   // a pool design = generator filler: a cute name + computed per-stem price, no signature tag/pricing
+    state.sigName=cuteName(); state.sigShop=null; state.sigPhotos=[]; state.sigPrice=null; state.sigOrig=null; _sigKey=null;
+  } else {
+    state.sigName=(sig&&sig.name)||null;
+    state.sigShop=(d&&d.shopName)||null;
+    state.sigPhotos=(sig&&Array.isArray(sig.photos))?sig.photos:[];
+    const reg=(sig&&sig.price!=null)?sig.price:null, sale=(sig&&sig.sale_price!=null)?sig.sale_price:null;
+    state.sigPrice=(sale!=null?sale:reg); state.sigOrig=(sale!=null?reg:null); _sigKey=designKey();
+  }
   afterChange();
   const _spk=(d&&d.sparkle)||(shop&&shop.sparkleFx)||'burst';   // use the saved per-signature effect; fall back to the shop's current effect (older signatures predate the saved field)
   requestAnimationFrame(()=>playSparkle(_spk));                 // wait one frame so the oval frame is laid out before we ring it with sparkles
@@ -713,8 +743,8 @@ function applyFrame(){ const fr=document.getElementById('frame'); if(!fr)return;
   fr.style.borderRadius=(shop.frameShape==='oval')?'50%':((shop.frameShape==='rounded')?'30px':'4px'); }
 const SIZES={S:{n:8,label:'Small'}, M:{n:13,label:'Medium'}, L:{n:20,label:'Large'}};
 
-const state={ wrapper:'natural', count:15, bloomSize:1, bloomLift:0, bunch:0.9, stemLen:1, trim:0.6, gather:null, cuts:[], mode:'select', stems:[], vaseOn:false, vaseW:1, vaseH:1, bow:null, wrapColor:null, explore:true };
-function saveState(){ try{ localStorage.setItem('bloom_save',JSON.stringify({wrapper:state.wrapper,count:state.count,bloomSize:state.bloomSize,bloomLift:state.bloomLift,bunch:state.bunch,stemLen:state.stemLen,trim:state.trim,bowColor:state.bowColor,bow:state.bow,wrapColor:state.wrapColor,gather:state.gather,cuts:state.cuts,stems:state.stems})); }catch(e){} }
+const state={ wrapper:'natural', wrapOn:false, pattern:'natural', count:15, bloomSize:1, bloomLift:0, bunch:0.9, stemLen:1, trim:0.6, gather:null, cuts:[], mode:'select', stems:[], vaseOn:false, vaseW:1, vaseH:1, bow:null, wrapColor:null, explore:true };   // wrapOn=false → default clean hand-tied bouquet (no paper); "wrap it" / owner+signature designs set it true
+function saveState(){ try{ localStorage.setItem('bloom_save',JSON.stringify({wrapper:state.wrapper,wrapOn:state.wrapOn,pattern:state.pattern,count:state.count,bloomSize:state.bloomSize,bloomLift:state.bloomLift,bunch:state.bunch,stemLen:state.stemLen,trim:state.trim,bowColor:state.bowColor,bow:state.bow,wrapColor:state.wrapColor,gather:state.gather,cuts:state.cuts,stems:state.stems})); }catch(e){} }
 const history=[];
 function pushHistory(){ try{ const d=designSnapshot(); d._sigName=state.sigName||null; d._sigShop=state.sigShop||null; d._sigPrice=(state.sigPrice!=null?state.sigPrice:null); d._sigOrig=(state.sigOrig!=null?state.sigOrig:null); d._sigPhotos=state.sigPhotos||[]; history.push(JSON.stringify(d)); if(history.length>60)history.shift(); }catch(e){} }
 function undo(){ if(!history.length)return; let d; try{ d=JSON.parse(history.pop()); }catch(e){ return; }
@@ -732,10 +762,11 @@ const rand=n=>(Math.random()*n)|0;
 const MAX_STEMS=42;
 let uidCounter=1, selectedUid=null, colorPickerOpen=false;
 let suggIdx=null, suggShownKey=[null,null], _revealed=false;   // sticky add-flower suggestions (per-slot index + last-shown flower so we only animate on a real change); one-time canvas reveal so the bouquet doesn't "jump" on load
+let stemSlot=0;   // monotonic spread slot → each stem keeps a stable golden-angle position (adds fill a fresh spot; existing flowers don't jump)
 function makeStem(id){ const fdef=FLOWERS.find(f=>f.id===id), v=variantSel[id];
   const faced=fdef&&fdef.faceRot!=null;   // flowers with a defined face turn toward the viewer (front=+x ⇒ spin=faceRot+90°) with a natural ±spread, so blooms don't point backward
   const spin=faced ? (fdef.faceRot+Math.PI/2)+(Math.random()-0.5)*1.6 : Math.random()*TAU;
-  const st={uid:uidCounter++, id, src:(v&&v.src)||(fdef&&fdef.src), color:(v&&v.color)||undefined, spin, scale:0.92+Math.random()*0.16, jy:(Math.random()-0.5)*0.12, jphi:Math.random()*0.5};   // tighter size spread (±8%) → even stems
+  const st={uid:uidCounter++, slot:stemSlot++, id, src:(v&&v.src)||(fdef&&fdef.src), color:(v&&v.color)||undefined, spin, scale:0.92+Math.random()*0.16, jy:(Math.random()-0.5)*0.12, jphi:Math.random()*0.5};   // tighter size spread (±8%) → even stems; slot = stable spread position
   if(faced && Math.random()<0.5){ st.tilt=(Math.random()-0.5)*0.38; st.tiltAxis=[Math.cos(Math.random()*TAU),0,Math.sin(Math.random()*TAU)]; }   // ~half lean slightly away/tilted for a natural look
   return st; }
 function afterChange(){ updatePrice(); updateCounts(); rebuild(); saveState(); renderSuggestions(); }
@@ -754,7 +785,7 @@ function initThree(){
   renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.04;
   scene=new THREE.Scene();
   camera=new THREE.PerspectiveCamera(38,1,0.1,100);
-  camera.position.set(6.2,2.7,0);   // default view rotated 90° so the bouquet front faces you
+  camera.position.set(6.2,2.7,0);   // default = regular front/side view; "Create your own" switches to top-down via topView(). frame() preserves whatever direction the user orbits to.
   controls=new THREE.OrbitControls(camera,canvas);
   controls.enableDamping=true; controls.dampingFactor=0.08;
   controls.enablePan=true; controls.minDistance=2.5; controls.maxDistance=24;
@@ -852,7 +883,7 @@ function installGizmo(){
     let iv=null, started=false;
     const step=()=>{ if(sel()){ fn(); needsOutline=true; } else clearInterval(iv); };
     const begin=(e)=>{ e.preventDefault(); e.stopPropagation(); if(!sel())return; gz._hold=true; if(!started){started=true; pushHistory();} step(); iv=setInterval(step,80); };
-    const end=()=>{ if(iv){clearInterval(iv);iv=null;} gz._hold=false; if(started){ started=false; if(selectedNode)selBox=new THREE.Box3().setFromObject(selectedNode); saveState(); } };
+    const end=()=>{ if(iv){clearInterval(iv);iv=null;} gz._hold=false; if(started){ started=false; if(selectedNode)selBox=new THREE.Box3().setFromObject(selectedNode); saveState(); } };   // keep the live move; don't rebuild (so the flower stays exactly where you dragged it)
     b.addEventListener('pointerdown',begin); b.addEventListener('pointerup',end); b.addEventListener('pointerleave',end); b.addEventListener('pointercancel',end);
   });
 }
@@ -862,7 +893,7 @@ function resize(){
 }
 // full-screen view: hide the panel (4 buttons + budget) and the add-flower icons so the bouquet fills the screen
 function toggleFullView(){ const app=document.getElementById('app'); const on=!app.classList.contains('immersive'); app.classList.toggle('immersive',on);
-  setTimeout(()=>{ resize(); frame(); },50); }   // let the layout reflow, then re-fit the bouquet to the bigger stage (#fsBtn shows only when not immersive; exit lives in the bar)
+  setTimeout(()=>{ resize(); frame(); },50); }   // keep the user's current angle; top-down is only for "Create your own"   // let the layout reflow, then re-fit the bouquet to the bigger stage (#fsBtn shows only when not immersive; exit lives in the bar)
 function gltf(){
   const l=new THREE.GLTFLoader();
   if(typeof MeshoptDecoder!=='undefined'&&l.setMeshoptDecoder)l.setMeshoptDecoder(MeshoptDecoder);
@@ -930,10 +961,177 @@ const SCULPT_PINK={
 };
 const DELETERS={ natural:SCULPT_NATURAL, pink:SCULPT_PINK, white:defaultCage() };
 // per-wrapper overrides from the lab's saves on this machine (key: lab_deleter_<wrapperId>)
-WRAP_IDS.forEach(id=>{ try{ const _s=JSON.parse(localStorage.getItem('lab_deleter_'+id)||'null'); if(_s&&_s.NH===NH&&_s.NA===NA&&_s.grid&&_s.grid.length===NH*NA){ DELETERS[id]={grid:_s.grid,nodeY:_s.nodeY,open:_s.open||new Array(NH*NA).fill(0),ang:_s.ang||new Array(NH*NA).fill(0),gather:_s.gather||null,rimMul:_s.rimMul||1,bow:_s.bow||null,shell:_s.shell||0}; } }catch(e){} });
+WRAP_IDS.forEach(id=>{ try{ const _s=JSON.parse(localStorage.getItem('lab_deleter_'+id)||'null'); if(!_s)return; const g0=DELETERS[id]||DELETERS.natural||{}; const matched=(_s.NH===NH&&_s.NA===NA&&_s.grid&&_s.grid.length===NH*NA);
+  DELETERS[id]={ grid:matched?_s.grid:g0.grid, nodeY:matched?_s.nodeY:g0.nodeY, open:matched?(_s.open||new Array(NH*NA).fill(0)):g0.open, ang:matched?(_s.ang||new Array(NH*NA).fill(0)):g0.ang, gather:_s.gather||g0.gather||null, rimMul:_s.rimMul||1, bow:_s.bow||g0.bow||null, shell:_s.shell||0, rim:(Array.isArray(_s.rim)&&_s.rim.length>=3)?_s.rim:null, texCage:!!_s.texCage };   // rim+texCage load regardless of grid NH/NA so the lab's cone+rim imports
+} catch(e){} });
 // back-compat: the old single 'lab_deleter' key → Kraft/natural
 try{ const _s=JSON.parse(localStorage.getItem('lab_deleter')||'null'); if(_s&&_s.NH===NH&&_s.grid&&_s.grid.length===NH*NA && !localStorage.getItem('lab_deleter_natural')){ DELETERS.natural={grid:_s.grid,nodeY:_s.nodeY,open:_s.open||new Array(NH*NA).fill(0),ang:_s.ang||new Array(NH*NA).fill(0),rimMul:_s.rimMul||1}; } }catch(e){}
-const SU={ uRimY:{value:1e9}, uBaseY:{value:0}, uGrid:{value:SCULPT_NATURAL.grid.slice()}, uNodeY:{value:SCULPT_NATURAL.nodeY.slice()}, uOpen:{value:SCULPT_NATURAL.open.slice()}, uAng:{value:new Array(NH*NA).fill(0)} };
+const SU={ uRimY:{value:1e9}, uBaseY:{value:0}, uGrid:{value:SCULPT_NATURAL.grid.slice()}, uNodeY:{value:SCULPT_NATURAL.nodeY.slice()}, uOpen:{value:SCULPT_NATURAL.open.slice()}, uAng:{value:new Array(NH*NA).fill(0)},
+  uCageTex:{value:new THREE.DataTexture(new Uint8Array([0,0,0,255]),1,1,THREE.RGBAFormat)}, uCageMax:{value:1}, uCageOn:{value:0}, uCageTight:{value:0.94},
+  uOccTex:{value:new THREE.DataTexture(new Uint8Array([255,255,255,255]),1,1,THREE.RGBAFormat)}, uOccOn:{value:0}, uOccMin:{value:new THREE.Vector3()}, uOccSize:{value:new THREE.Vector3(1,1,1)} };   // + SDF-style occupancy clip (exact mesh inside/outside)
+SU.uCageTex.value.needsUpdate=true; SU.uOccTex.value.needsUpdate=true;
+// Bake the wrapper's exact silhouette (radius by angle×height) into a texture; per angle, free ABOVE the top edge so blooms spill out. Returns true on success.
+function bakeWrapperCage(rimFn){
+  if(!wrapperNode)return false;
+  const rimY=SU.uRimY.value, baseY=SU.uBaseY.value||0; if(!(rimY>baseY))return false;
+  const W=96,H=32; const rad=new Float32Array(W*H), got=new Uint8Array(W*H); let maxR=0.001; const v=new THREE.Vector3();
+  wrapperNode.updateMatrixWorld(true);
+  wrapperNode.traverse(o=>{ if(o.isMesh&&o.geometry&&o.geometry.attributes&&o.geometry.attributes.position){ const pos=o.geometry.attributes.position, m=o.matrixWorld;
+    for(let k=0;k<pos.count;k++){ v.fromBufferAttribute(pos,k).applyMatrix4(m); const rr=Math.hypot(v.x,v.z); if(rr<1e-4)continue;
+      let a=Math.atan2(v.z,v.x)/(Math.PI*2); a-=Math.floor(a); let tt=(v.y-baseY)/(rimY-baseY); if(tt<-0.03||tt>1.05)continue; tt=Math.min(1,Math.max(0,tt));
+      const i=Math.min(W-1,Math.floor(a*W)), j=Math.min(H-1,Math.round(tt*(H-1))), idx=j*W+i; if(rr>rad[idx])rad[idx]=rr; got[idx]=1; if(rr>maxR)maxR=rr; } } });
+  let any=false; for(let k=0;k<W*H;k++)if(got[k]){any=true;break;} if(!any)return false;
+  const data=new Uint8Array(W*H*4);
+  for(let i=0;i<W;i++){ let topJ; if(rimFn){ const _rh=rimFn(i/W*Math.PI*2); topJ=Math.max(0,Math.min(H-1,Math.round(((_rh-baseY)/(rimY-baseY))*(H-1)))); } else { topJ=-1; for(let j=H-1;j>=0;j--){ if(got[j*W+i]){ topJ=j; break; } } }   // rimFn = use the drawn rim for the opening; else the auto top edge
+    if(topJ<0){ for(let j=0;j<H;j++){ const o2=(j*W+i)*4; data[o2]=0; data[o2+1]=0; data[o2+3]=255; } continue; }
+    let last=0; for(let j=0;j<=topJ;j++){ const idx=j*W+i; if(got[idx])last=rad[idx]; else rad[idx]=last; const o2=idx*4; data[o2]=Math.max(0,Math.min(255,Math.round(rad[idx]/maxR*255))); data[o2+1]=255; data[o2+3]=255; }
+    const _rimR=rad[topJ*W+i]*1.06; for(let j=topJ+1;j<H;j++){ const o2=(j*W+i)*4; data[o2]=Math.max(0,Math.min(255,Math.round(_rimR/maxR*255))); data[o2+1]=255; data[o2+2]=255; data[o2+3]=255; } }   // above the rim: clip to the OPENING width (+6%) AND mark it the "spill zone" (B=255) where green foliage is trimmed so only blooms/filler show
+  const tex=new THREE.DataTexture(data,W,H,THREE.RGBAFormat,THREE.UnsignedByteType);
+  tex.wrapS=THREE.RepeatWrapping; tex.wrapT=THREE.ClampToEdgeWrapping; tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter; tex.needsUpdate=true;
+  if(SU.uCageTex.value&&SU.uCageTex.value.dispose)SU.uCageTex.value.dispose();
+  SU.uCageTex.value=tex; SU.uCageMax.value=maxR; return true;
+}
+let _cageKey=null, _occKey=null, _cageNB=null;   // only re-bake when the wrapper or its size actually changes; _cageNB = cage's own bbox for per-frame rescale
+// ===== ISLAND CLIP (ported from perfect.html) — the "perfect" rule =====
+// Keep any flower piece that touches inside the wrapper or overflows above the rim; delete only SEPARATE islands fully outside the wall below the rim. No chewed petals, no floating stems.
+let _profileKey=null, WPROF=null; const _compCache=new Map(); const PROF_YS=64, PROF_AS=96; let WPROF_GAP=0.12;   // inside safety gap = barrier thickness from the paper (bigger = thicker; tune up if leaves still poke)
+function buildWrapperProfile(){
+  WPROF=null; if(!wrapperNode)return false; wrapperNode.updateMatrixWorld(true);
+  const pts=[], v=new THREE.Vector3();
+  wrapperNode.traverse(o=>{ if(o.isMesh&&o.geometry&&o.geometry.attributes&&o.geometry.attributes.position){ const pos=o.geometry.attributes.position,m=o.matrixWorld,stride=Math.max(1,Math.floor(pos.count/45000)); for(let i=0;i<pos.count;i+=stride){ pts.push(v.fromBufferAttribute(pos,i).applyMatrix4(m).clone()); } }});
+  if(pts.length<20)return false;
+  const box=new THREE.Box3().setFromPoints(pts), center=box.getCenter(new THREE.Vector3());
+  const YS=PROF_YS,AS=PROF_AS, minY=box.min.y,maxY=box.max.y,h=Math.max(1e-6,maxY-minY);
+  const radii=Array.from({length:YS},()=>Array.from({length:AS},()=>[])), table=Array.from({length:YS},()=>new Float32Array(AS)), rimY=new Float32Array(AS), rimSeen=new Uint8Array(AS);
+  for(let a=0;a<AS;a++)rimY[a]=-Infinity;
+  for(const p of pts){ const yi=Math.max(0,Math.min(YS-1,Math.floor((p.y-minY)/h*YS))); let a=Math.atan2(p.z-center.z,p.x-center.x); if(a<0)a+=Math.PI*2; const ai=Math.max(0,Math.min(AS-1,Math.floor(a/(Math.PI*2)*AS))); radii[yi][ai].push(Math.hypot(p.x-center.x,p.z-center.z)); if(p.y>rimY[ai]){rimY[ai]=p.y;rimSeen[ai]=1;} }
+  for(let a=0;a<AS;a++){ if(!rimSeen[a]){ for(let rad=1;rad<AS/2;rad++){ const l=(a-rad+AS)%AS,r=(a+rad)%AS; if(rimSeen[l]||rimSeen[r]){ const vv=[]; if(rimSeen[l])vv.push(rimY[l]); if(rimSeen[r])vv.push(rimY[r]); rimY[a]=vv.reduce((x,y)=>x+y,0)/vv.length; rimSeen[a]=1; break; } } if(!rimSeen[a])rimY[a]=maxY; } }
+  for(let pass=0;pass<4;pass++){ const old=new Float32Array(rimY); for(let a=0;a<AS;a++)rimY[a]=(old[(a-1+AS)%AS]+old[a]*2+old[(a+1)%AS])/4; }
+  const pct=(arr,p)=>{ if(!arr.length)return 0; arr=arr.slice().sort((x,y)=>x-y); return arr[Math.min(arr.length-1,Math.max(0,Math.floor(p*(arr.length-1))))]; };
+  const radNear=(y,a)=>{ const arr=radii[y][a]; if(arr.length)return pct(arr,0.82); for(let rad=1;rad<12;rad++){ let mix=[]; for(let dy=-rad;dy<=rad;dy++)for(let da=-rad;da<=rad;da++){ const yy=y+dy; if(yy<0||yy>=YS)continue; const aa=(a+da+AS)%AS; if(radii[yy][aa].length)mix=mix.concat(radii[yy][aa]); } if(mix.length)return pct(mix,0.82); } return Math.max(box.max.x-box.min.x,box.max.z-box.min.z)*0.5; };
+  for(let y=0;y<YS;y++)for(let a=0;a<AS;a++)table[y][a]=radNear(y,a);
+  for(let pass=0;pass<3;pass++){ const old=table.map(row=>new Float32Array(row)); for(let y=0;y<YS;y++)for(let a=0;a<AS;a++){ const l=old[y][(a-1+AS)%AS],r=old[y][(a+1)%AS],u=old[Math.max(0,y-1)][a],d=old[Math.min(YS-1,y+1)][a]; table[y][a]=(old[y][a]*4+l+r+u+d)/8; } }
+  WPROF={YS,AS,minY,maxY,h,cx:center.x,cy:center.y,cz:center.z,table,rimY}; return true;
+}
+function isInsideWrapper(x,y,z){
+  const P=WPROF; if(!P)return true;
+  let a=Math.atan2(z-P.cz,x-P.cx); if(a<0)a+=Math.PI*2; const ai=Math.max(0,Math.min(P.AS-1,Math.floor(a/(Math.PI*2)*P.AS)));
+  const rimYa=(P.rimY[ai]>-1e30)?P.rimY[ai]:P.maxY;
+  if(y>=rimYa-P.h*0.025)return true;                 // above local rim = overflow, always allowed
+  if(y<P.minY||y>P.maxY)return false;
+  const yi=Math.max(0,Math.min(P.YS-1,Math.floor((y-P.minY)/P.h*P.YS)));
+  const wallR=P.table[yi][ai], r=Math.hypot(x-P.cx,z-P.cz);
+  return r<=wallR*(1-WPROF_GAP);
+}
+function findTriangleComponents(g){
+  const pos=g.attributes.position, triCount=(pos.count/3)|0, v2t=new Map(), q=10000;
+  const key=i=>Math.round(pos.getX(i)*q)+','+Math.round(pos.getY(i)*q)+','+Math.round(pos.getZ(i)*q);
+  for(let tri=0;tri<triCount;tri++){ const b=tri*3; for(let j=0;j<3;j++){ const k=key(b+j); let arr=v2t.get(k); if(!arr){arr=[];v2t.set(k,arr);} arr.push(tri); } }
+  const visited=new Uint8Array(triCount), comps=[];
+  for(let s=0;s<triCount;s++){ if(visited[s])continue; const stack=[s],comp=[]; visited[s]=1; while(stack.length){ const tri=stack.pop(); comp.push(tri); const b=tri*3; for(let j=0;j<3;j++){ const arr=v2t.get(key(b+j))||[]; for(const nb of arr){ if(!visited[nb]){visited[nb]=1;stack.push(nb);} } } } comps.push(comp); }
+  return comps;
+}
+function buildLocalSubset(g,triIds){
+  const pos=g.attributes.position,norm=g.attributes.normal,uv=g.attributes.uv, verts=[],norms=[],uvs=[];
+  for(const tri of triIds){ const st=tri*3; for(let j=0;j<3;j++){ verts.push(pos.getX(st+j),pos.getY(st+j),pos.getZ(st+j)); if(norm)norms.push(norm.getX(st+j),norm.getY(st+j),norm.getZ(st+j)); if(uv)uvs.push(uv.getX(st+j),uv.getY(st+j)); } }
+  const ng=new THREE.BufferGeometry(); ng.setAttribute('position',new THREE.Float32BufferAttribute(verts,3)); if(norms.length)ng.setAttribute('normal',new THREE.Float32BufferAttribute(norms,3)); else ng.computeVertexNormals(); if(uvs.length)ng.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2)); return ng;
+}
+function islandClipFlower(node){   // PER-TRIANGLE: keep a triangle if ANY vertex is inside/overflow; cut triangles fully outside the wall below the rim → trims connected poke-through leaves/filler while leaving non-poking blooms whole
+  if(!WPROF)return; node.updateMatrixWorld(true);
+  const bb=new THREE.Box3().setFromObject(node);   // FAST SKIP: if the whole flower box is inside/overflow, there's nothing to cut → don't touch it
+  let allIn=true; for(let xi=0;xi<2&&allIn;xi++)for(let yi=0;yi<2&&allIn;yi++)for(let zi=0;zi<2&&allIn;zi++){ if(!isInsideWrapper(xi?bb.max.x:bb.min.x, yi?bb.max.y:bb.min.y, zi?bb.max.z:bb.min.z))allIn=false; }
+  if(allIn)return;
+  node.traverse(o=>{ if(!(o.isMesh&&o.geometry&&o.geometry.attributes&&o.geometry.attributes.position))return;
+    const src=o.geometry; let cache=_compCache.get(src.uuid);
+    if(!cache){ const g=src.index?src.toNonIndexed():src.clone(); cache={g,arr:g.attributes.position.array,total:(g.attributes.position.count/3)|0}; _compCache.set(src.uuid,cache); }
+    const g=cache.g, arr=cache.arr, tc=cache.total, keepTris=[];
+    const e=o.matrixWorld.elements, e0=e[0],e1=e[1],e2=e[2],e4=e[4],e5=e[5],e6=e[6],e8=e[8],e9=e[9],e10=e[10],e12=e[12],e13=e[13],e14=e[14];   // inline the world transform → no per-vertex Vector3 alloc / applyMatrix4 / getX-Y-Z calls (hot loop)
+    for(let tri=0;tri<tc;tri++){ const b=tri*9; let anyIn=false;
+      for(let j=0;j<9;j+=3){ const x=arr[b+j],y=arr[b+j+1],z=arr[b+j+2]; if(isInsideWrapper(e0*x+e4*y+e8*z+e12, e1*x+e5*y+e9*z+e13, e2*x+e6*y+e10*z+e14)){anyIn=true;break;} }
+      if(anyIn)keepTris.push(tri);
+    }
+    if(keepTris.length<tc) o.geometry=buildLocalSubset(g,keepTris);
+  });
+}
+// SDF-style EXACT clip: voxelize the wrapper, flood-fill the cavity per height slice (carrying the cross-section up through the opening), bake to a 2D atlas. Shader cuts any fragment OUTSIDE the real shape — works for non-radial cones / flat panels, color-blind.
+const OCC_GX=72, OCC_GZ=72, OCC_GY=36, OCC_TX=6, OCC_TY=6;   // finer grid → tighter clip boundary (catches thin stems/small florets)
+let OCC_INSET=(parseInt(localStorage.getItem('bloom_scissor_inset'),10)); if(!(OCC_INSET>=0))OCC_INSET=2;   // pull the auto-scissor INWARD by N cells = a thicker barrier from the paper so leaves don't pop through (tunable in scissorlab.html → localStorage)
+// COLLISION CAGE: voxelize the CLEAN CLOSED cage mesh (wrapper_collision_cage.js) fit to the current wrapper's bbox → robust 3D inside/outside (no open-mouth leaks). Inside the cage = visible; outside = scissored.
+function bakeCageOcc(){
+  const C=window.WRAPPER_CAGE; if(!C||!C.vertices||!C.indices||!wrapperNode) return false; const V=C.vertices, IDX=C.indices;
+  const wb=new THREE.Box3().setFromObject(wrapperNode); const wmin=wb.min.clone(), wsz=wb.getSize(new THREE.Vector3()); if(wsz.x<1e-3||wsz.y<1e-3||wsz.z<1e-3) return false;
+  let cnx=1e9,cny=1e9,cnz=1e9,cxx=-1e9,cxy=-1e9,cxz=-1e9; for(let i=0;i<V.length;i+=3){ const x=V[i],y=V[i+1],z=V[i+2]; if(x<cnx)cnx=x;if(x>cxx)cxx=x; if(y<cny)cny=y;if(y>cxy)cxy=y; if(z<cnz)cnz=z;if(z>cxz)cxz=z; }
+  const csx=Math.max(cxx-cnx,1e-4),csy=Math.max(cxy-cny,1e-4),csz=Math.max(cxz-cnz,1e-4); _cageNB={cnx,cny,cnz,csx,csy,csz};   // cage's OWN bbox → the grid spans the whole cage (incl. an overflow dome above/around the rim); world placement set below + rescaled per frame
+  const GX=OCC_GX,GZ=OCC_GZ,GY=OCC_GY, SL=GX*GZ, ID=(i,j,k)=>k*SL+j*GX+i, occ=new Uint8Array(GX*GZ*GY);
+  const gx=x=>(x-cnx)/csx*GX, gy=y=>(y-cny)/csy*GY, gz=z=>(z-cnz)/csz*GZ;   // cage native → grid (no stretch; the cage fills its own bbox)
+  const mk=(fi,fj,fk)=>{ const i=fi|0,j=fj|0,k=fk|0; if(i>=0&&i<GX&&j>=0&&j<GZ&&k>=0&&k<GY)occ[ID(i,j,k)]=1; };
+  for(let t=0;t+2<IDX.length;t+=3){ const a=IDX[t]*3,b=IDX[t+1]*3,c=IDX[t+2]*3;
+    const ax=gx(V[a]),ay=gy(V[a+1]),az=gz(V[a+2]), bx=gx(V[b]),by=gy(V[b+1]),bz=gz(V[b+2]), cx=gx(V[c]),cy=gy(V[c+1]),cz=gz(V[c+2]);
+    const steps=Math.min(24,Math.max(1,Math.ceil(Math.max(Math.hypot(bx-ax,by-ay,bz-az),Math.hypot(cx-ax,cy-ay,cz-az),Math.hypot(cx-bx,cy-by,cz-bz)))));
+    for(let s1=0;s1<=steps;s1++)for(let s2=0;s2<=steps-s1;s2++){ const u=s1/steps,w=s2/steps; mk(ax+(bx-ax)*u+(cx-ax)*w, ay+(by-ay)*u+(cy-ay)*w, az+(bz-az)*u+(cz-az)*w); } }
+  const tmp=occ.slice(), dl=(i,j,k)=>{ if(i>=0&&i<GX&&j>=0&&j<GZ&&k>=0&&k<GY&&occ[ID(i,j,k)]===0)occ[ID(i,j,k)]=2; };   // seal voxel gaps (6-neighbour dilate) so the flood can't leak through the wall
+  for(let k=0;k<GY;k++)for(let j=0;j<GZ;j++)for(let i=0;i<GX;i++){ if(tmp[ID(i,j,k)]!==1)continue; dl(i+1,j,k);dl(i-1,j,k);dl(i,j+1,k);dl(i,j-1,k);dl(i,j,k+1);dl(i,j,k-1); }
+  for(let n=0;n<occ.length;n++)if(occ[n]===2)occ[n]=1;
+  const out=new Uint8Array(GX*GZ*GY), stk=[0]; out[0]=1;   // 3D flood from the corner (outside the cage) → mark reachable empties as OUTSIDE
+  while(stk.length){ const cc=stk.pop(), k=(cc/SL)|0, rm=cc-k*SL, j=(rm/GX)|0, i=rm-j*GX;
+    const nb=(ni,nj,nk)=>{ if(ni<0||ni>=GX||nj<0||nj>=GZ||nk<0||nk>=GY)return; const id=nk*SL+nj*GX+ni; if(out[id]||occ[id])return; out[id]=1; stk.push(id); };
+    nb(i+1,j,k);nb(i-1,j,k);nb(i,j+1,k);nb(i,j-1,k);nb(i,j,k+1);nb(i,j,k-1); }
+  const inside=new Uint8Array(GX*GZ*GY); let cnt=0; for(let n=0;n<inside.length;n++){ inside[n]=out[n]?0:1; if(inside[n])cnt++; }
+  if(cnt < GX*GZ*GY*0.01) return false;   // safety: flood leaked into the cage (degenerate) → fall back to wrapper voxelization
+  if(OCC_INSET>0){ for(let it=0;it<OCC_INSET;it++){ const cp=inside.slice();
+    for(let k=0;k<GY;k++)for(let j=0;j<GZ;j++)for(let i=0;i<GX;i++){ const id=ID(i,j,k); if(!cp[id])continue; if(i===0||i===GX-1||j===0||j===GZ-1||!cp[ID(i-1,j,k)]||!cp[ID(i+1,j,k)]||!cp[ID(i,j-1,k)]||!cp[ID(i,j+1,k)])inside[id]=0; } } }
+  const AW=GX*OCC_TX,AH=GZ*OCC_TY,data=new Uint8Array(AW*AH*4);
+  for(let k=0;k<GY;k++){ const tx=(k%OCC_TX)*GX,ty=((k/OCC_TX)|0)*GZ; for(let j=0;j<GZ;j++)for(let i=0;i<GX;i++){ const v=inside[ID(i,j,k)]?255:0, aa=((ty+j)*AW+(tx+i))*4; data[aa]=v; data[aa+3]=255; } }
+  const tex=new THREE.DataTexture(data,AW,AH,THREE.RGBAFormat,THREE.UnsignedByteType); tex.minFilter=THREE.NearestFilter; tex.magFilter=THREE.NearestFilter; tex.wrapS=THREE.ClampToEdgeWrapping; tex.wrapT=THREE.ClampToEdgeWrapping; tex.needsUpdate=true;
+  if(SU.uOccTex.value&&SU.uOccTex.value.dispose)SU.uOccTex.value.dispose();
+  SU.uOccTex.value=tex; const _sc=wsz.y/WRAP_H, _wcx=wmin.x+wsz.x*0.5, _wcz=wmin.z+wsz.z*0.5; SU.uOccMin.value.set(_wcx+cnx*_sc, wmin.y+cny*_sc, _wcz+cnz*_sc); SU.uOccSize.value.set(csx*_sc, csy*_sc, csz*_sc); return true;   // grid placed at the cage's WORLD bbox (scaled to the wrapper)
+}
+function bakeWrapperOcc(){
+  if(!wrapperNode)return false; wrapperNode.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(wrapperNode); if(!isFinite(box.min.x))return false;
+  const min=box.min.clone(), size=box.getSize(new THREE.Vector3()); if(size.x<1e-3||size.y<1e-3||size.z<1e-3)return false;
+  const GX=OCC_GX,GZ=OCC_GZ,GY=OCC_GY, SL=GX*GZ; const ID=(i,j,k)=>k*SL+j*GX+i;
+  const occ=new Uint8Array(GX*GZ*GY); let found=false;
+  const cell=Math.min(size.x/GX,size.y/GY,size.z/GZ); const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
+  const mark=(x,y,z)=>{ const i=Math.floor((x-min.x)/size.x*GX), j=Math.floor((z-min.z)/size.z*GZ), k=Math.floor((y-min.y)/size.y*GY); if(i>=0&&i<GX&&j>=0&&j<GZ&&k>=0&&k<GY){ occ[ID(i,j,k)]=1; found=true; } };
+  wrapperNode.traverse(o=>{ if(o.isMesh&&o.geometry&&o.geometry.attributes&&o.geometry.attributes.position){ const pos=o.geometry.attributes.position, m=o.matrixWorld, index=o.geometry.index, tc=index?index.count:pos.count;
+    for(let t=0;t+2<tc;t+=3){ const ia=index?index.getX(t):t, ib=index?index.getX(t+1):t+1, ic=index?index.getX(t+2):t+2;
+      a.fromBufferAttribute(pos,ia).applyMatrix4(m); b.fromBufferAttribute(pos,ib).applyMatrix4(m); c.fromBufferAttribute(pos,ic).applyMatrix4(m);
+      const steps=Math.min(28,Math.max(1,Math.ceil(Math.max(a.distanceTo(b),a.distanceTo(c),b.distanceTo(c))/Math.max(cell,1e-4))));   // sample the whole triangle face → watertight wall (no flood-fill leaks)
+      for(let s1=0;s1<=steps;s1++)for(let s2=0;s2<=steps-s1;s2++){ const u=s1/steps, w=s2/steps; mark(a.x+(b.x-a.x)*u+(c.x-a.x)*w, a.y+(b.y-a.y)*u+(c.y-a.y)*w, a.z+(b.z-a.z)*u+(c.z-a.z)*w); } } }});
+  if(!found)return false;
+  const tmp=occ.slice();   // dilate the wall by 1 cell per slice to seal gaps (prevents flood-fill leaks)
+  for(let k=0;k<GY;k++)for(let j=0;j<GZ;j++)for(let i=0;i<GX;i++){ if(tmp[ID(i,j,k)]!==1)continue;
+    for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){ const ni=i+di,nj=j+dj; if(ni>=0&&ni<GX&&nj>=0&&nj<GZ&&occ[ID(ni,nj,k)]===0)occ[ID(ni,nj,k)]=1; } }
+  const inside=new Uint8Array(GX*GZ*GY); let prev=null; const stack=[];
+  for(let k=0;k<GY;k++){ let hasSurf=false; for(let c=0;c<SL;c++){ if(occ[k*SL+c]===1){hasSurf=true;break;} }
+    if(!hasSurf){ if(prev){ for(let c=0;c<SL;c++)inside[k*SL+c]=prev[c]; prev=inside.subarray(k*SL,(k+1)*SL); } continue; }   // empty slice (opening) → carry the cross-section up
+    let _si=0,_sj=0,_sn=0; for(let jj2=0;jj2<GZ;jj2++)for(let ii2=0;ii2<GX;ii2++){ if(occ[ID(ii2,jj2,k)]===1){ _si+=ii2; _sj+=jj2; _sn++; } }   // seed from THIS slice's cross-section center (handles leaning/off-axis cones), not the grid center
+    const ci=_sn?Math.round(_si/_sn):(GX>>1), cj=_sn?Math.round(_sj/_sn):(GZ>>1); let seed=-1;
+    for(let r=0;r<Math.max(GX,GZ)&&seed<0;r++)for(let dj=-r;dj<=r&&seed<0;dj++)for(let di=-r;di<=r&&seed<0;di++){ const ni=ci+di,nj=cj+dj; if(ni>=0&&ni<GX&&nj>=0&&nj<GZ&&occ[ID(ni,nj,k)]===0)seed=nj*GX+ni; }
+    if(seed<0)continue;
+    const vis=new Uint8Array(SL); stack.length=0; stack.push(seed); vis[seed]=1; let leaked=false;
+    while(stack.length){ const cc=stack.pop(); const ii=cc%GX, jj=(cc/GX)|0;
+      if(ii===0||ii===GX-1||jj===0||jj===GZ-1)leaked=true;   // flood reached the bbox edge → it escaped through an OPEN (tilted-mouth) ring this slice
+      if(ii+1<GX){const c2=cc+1; if(!vis[c2]&&occ[ID(ii+1,jj,k)]===0){vis[c2]=1;stack.push(c2);}}
+      if(ii-1>=0){const c2=cc-1; if(!vis[c2]&&occ[ID(ii-1,jj,k)]===0){vis[c2]=1;stack.push(c2);}}
+      if(jj+1<GZ){const c2=cc+GX; if(!vis[c2]&&occ[ID(ii,jj+1,k)]===0){vis[c2]=1;stack.push(c2);}}
+      if(jj-1>=0){const c2=cc-GX; if(!vis[c2]&&occ[ID(ii,jj-1,k)]===0){vis[c2]=1;stack.push(c2);}} }
+    if(leaked && prev){ for(let c=0;c<SL;c++)inside[k*SL+c]=prev[c]; }   // escaped → carry the last CLOSED cross-section up as a tight tube (no leak through the open/tilted mouth)
+    else { for(let c=0;c<SL;c++)inside[k*SL+c]=(vis[c]||occ[k*SL+c]===1)?1:0; }
+    prev=inside.subarray(k*SL,(k+1)*SL);
+  }
+  if(OCC_INSET>0){ for(let it=0;it<OCC_INSET;it++){ const cp=inside.slice();   // erode the interior inward by OCC_INSET cells → the scissor cuts tighter into the wrapper
+    for(let k=0;k<GY;k++)for(let j=0;j<GZ;j++)for(let i=0;i<GX;i++){ const id=ID(i,j,k); if(!cp[id])continue;
+      if(i===0||i===GX-1||j===0||j===GZ-1||!cp[ID(i-1,j,k)]||!cp[ID(i+1,j,k)]||!cp[ID(i,j-1,k)]||!cp[ID(i,j+1,k)])inside[id]=0; } } }
+  const AW=GX*OCC_TX, AH=GZ*OCC_TY, data=new Uint8Array(AW*AH*4);
+  for(let k=0;k<GY;k++){ const tx=(k%OCC_TX)*GX, ty=((k/OCC_TX)|0)*GZ;
+    for(let j=0;j<GZ;j++)for(let i=0;i<GX;i++){ const a=((ty+j)*AW+(tx+i))*4, val=inside[ID(i,j,k)]?255:0; data[a]=val; data[a+3]=255; } }
+  const tex=new THREE.DataTexture(data,AW,AH,THREE.RGBAFormat,THREE.UnsignedByteType);
+  tex.minFilter=THREE.NearestFilter; tex.magFilter=THREE.NearestFilter; tex.wrapS=THREE.ClampToEdgeWrapping; tex.wrapT=THREE.ClampToEdgeWrapping; tex.needsUpdate=true;
+  if(SU.uOccTex.value&&SU.uOccTex.value.dispose)SU.uOccTex.value.dispose();
+  SU.uOccTex.value=tex; SU.uOccMin.value.copy(min); SU.uOccSize.value.copy(size); return true;
+}
 function setCage(id){ const c=DELETERS[id]||DELETERS.natural; for(let i=0;i<NH*NA;i++){ SU.uGrid.value[i]=c.grid[i]+(c.shell||0); SU.uNodeY.value[i]=c.nodeY[i]; SU.uOpen.value[i]=(c.open&&c.open[i])||0; SU.uAng.value[i]=(c.ang&&c.ang[i])||0; } return c; }
 // radius blends only CLOSED nodes; openness from the NEAREST spoke (dd<=0.5) → sharp openings (matches lab.html)
 const FN='float delR(vec3 wp, out float ceilTT){ float tt=clamp((wp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0);'+
@@ -948,11 +1146,11 @@ const FN='float delR(vec3 wp, out float ceilTT){ float tt=clamp((wp.y-uBaseY)/ma
   '   cc+=mny*aw;'+
   '   float cl=1.0-clamp(so,0.0,1.0); r+=sr*aw*cl; cw+=aw*cl; wsum+=aw; if(dd<=0.5){ openNear=max(openNear,clamp(so,0.0,1.0)); } }'+
   ' ceilTT=(wsum>0.0)?cc/wsum:1.0; if(openNear>0.5){ return 50.0; } return (cw>0.0)?r/cw:50.0; }';
-const DECL='varying vec3 vWp;\nuniform float uRimY;uniform float uBaseY;uniform float uGrid['+(NH*NA)+'];uniform float uNodeY['+(NH*NA)+'];uniform float uOpen['+(NH*NA)+'];uniform float uAng['+(NH*NA)+'];\n'+FN+'\n';
+const DECL='varying vec3 vWp;\nuniform float uRimY;uniform float uBaseY;uniform float uGrid['+(NH*NA)+'];uniform float uNodeY['+(NH*NA)+'];uniform float uOpen['+(NH*NA)+'];uniform float uAng['+(NH*NA)+'];\nuniform sampler2D uCageTex;uniform float uCageMax;uniform float uCageOn;uniform float uCageTight;\nuniform sampler2D uOccTex;uniform float uOccOn;uniform vec3 uOccMin;uniform vec3 uOccSize;\n'+FN+'\n';
 // deleter cage + ACCURATE hue recolor (ported from Junko3): replace the hue, keep luminance/shading,
 // and auto-skip green pixels so leaves stay green. Live via per-material uniforms (no clone-to-array, no recompile on colour change).
 function maskCompileImpl(shader, mat){
-  shader.uniforms.uRimY=SU.uRimY; shader.uniforms.uBaseY=SU.uBaseY; shader.uniforms.uGrid=SU.uGrid; shader.uniforms.uNodeY=SU.uNodeY; shader.uniforms.uOpen=SU.uOpen; shader.uniforms.uAng=SU.uAng;
+  shader.uniforms.uRimY=SU.uRimY; shader.uniforms.uBaseY=SU.uBaseY; shader.uniforms.uGrid=SU.uGrid; shader.uniforms.uNodeY=SU.uNodeY; shader.uniforms.uOpen=SU.uOpen; shader.uniforms.uAng=SU.uAng; shader.uniforms.uCageTex=SU.uCageTex; shader.uniforms.uCageMax=SU.uCageMax; shader.uniforms.uCageOn=SU.uCageOn; shader.uniforms.uCageTight=SU.uCageTight; shader.uniforms.uOccTex=SU.uOccTex; shader.uniforms.uOccOn=SU.uOccOn; shader.uniforms.uOccMin=SU.uOccMin; shader.uniforms.uOccSize=SU.uOccSize;
   const ud=(mat&&mat.userData)||{};
   shader.uniforms.uHueOn={value:ud.hueOn?1.0:0.0};
   shader.uniforms.uHueTarget={value:new THREE.Color(ud.hueTarget||0xffffff)};
@@ -969,9 +1167,9 @@ function maskCompileImpl(shader, mat){
     'vec3 fdHsv2rgb(vec3 c){ vec4 K=vec4(1.0,0.6666667,0.3333333,3.0); vec3 p=abs(fract(c.xxx+K.xyz)*6.0-K.www); return c.z*mix(K.xxx,clamp(p-K.xxx,0.0,1.0),c.y); }\n'+
     DECL+shader.fragmentShader
     .replace('#include <color_fragment>',
-      '#include <color_fragment>\n  if(uHueOn>0.5){ vec3 _hs=fdRgb2hsv(diffuseColor.rgb); float _hd=_hs.x*360.0; bool _grn=(_hd>70.0 && _hd<175.0 && _hs.y>0.18); if(!_grn){ vec3 _ht=fdRgb2hsv(uHueTarget); _hs.x=_ht.x; _hs.y=clamp(mix(_hs.y,_ht.y,clamp(uHueAmt,0.0,1.0))*1.32,0.0,1.0); _hs.z=clamp(pow(_hs.z,0.86)*(0.62+0.5*_ht.z),0.0,1.0); diffuseColor.rgb=fdHsv2rgb(_hs); } }')
+      '#include <color_fragment>\n  if(uHueOn>0.5){ vec3 _hs=fdRgb2hsv(diffuseColor.rgb); float _hd=_hs.x*360.0; bool _grn=(_hd>70.0 && _hd<175.0 && _hs.y>0.18); if(!_grn){ vec3 _ht=fdRgb2hsv(uHueTarget); _hs.x=_ht.x; _hs.y=clamp(mix(_hs.y,_ht.y,clamp(uHueAmt,0.0,1.0))*1.32,0.0,1.0); _hs.z=clamp(pow(_hs.z,0.86)*(0.62+0.5*_ht.z),0.0,1.0); diffuseColor.rgb=fdHsv2rgb(_hs); } }\n  if(uCageOn>0.5){ float _ga=fract(atan(vWp.z,vWp.x)*0.15915494); float _gt=clamp((vWp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0); vec4 _cg=texture2D(uCageTex,vec2(_ga,_gt)); if(length(vWp.xz)>_cg.r*uCageMax*uCageTight){ vec3 _gg=fdRgb2hsv(diffuseColor.rgb); float _gd=_gg.x*360.0; if(_gd>70.0 && _gd<175.0 && _gg.y>0.18){ discard; } } }')
     .replace('#include <clipping_planes_fragment>',
-      '#include <clipping_planes_fragment>\n  float cl; float cr=delR(vWp,cl); float tt2=clamp((vWp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0); if(tt2<cl && length(vWp.xz)>cr){ discard; }');
+      '#include <clipping_planes_fragment>\n  if(uOccOn>0.5){ vec3 _og=(vWp-uOccMin)/uOccSize; if(_og.y<0.999){ if(_og.x<0.0||_og.x>1.0||_og.z<0.0||_og.z>1.0){ discard; } else { float _ok=floor(clamp(_og.y,0.0,0.9999)*'+OCC_GY+'.0); float _oi=clamp(_og.x,0.0,0.9999)*'+OCC_GX+'.0; float _oj=clamp(_og.z,0.0,0.9999)*'+OCC_GZ+'.0; float _otx=mod(_ok,'+OCC_TX+'.0); float _oty=floor(_ok/'+OCC_TX+'.0); float _ax=(_otx*'+OCC_GX+'.0+_oi)/('+OCC_GX+'.0*'+OCC_TX+'.0); float _ay=(_oty*'+OCC_GZ+'.0+_oj)/('+OCC_GZ+'.0*'+OCC_TY+'.0); if(texture2D(uOccTex,vec2(_ax,_ay)).r<0.5){ discard; } } } } else if(uCageOn>0.5){ float _ca=fract(atan(vWp.z,vWp.x)*0.15915494); float _ct=clamp((vWp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0); vec4 _cc=texture2D(uCageTex,vec2(_ca,_ct)); if(_cc.g>0.5 && _ct<0.999 && length(vWp.xz)>_cc.r*uCageMax*uCageTight){ discard; } }');   // EXACT occupancy clip (mesh inside/outside); radial fallback   // clip ALL colors past the silhouette at every height (paper radius below the rim, opening width above) → blooms rise but nothing fans/drapes out (catches white baby's-breath); only the very top (t<0.999) is free
 }
 function makeFlowerCompile(mat){ return function(shader){ maskCompileImpl(shader, mat); }; }   // captures the material so recolor uniforms live on it
 function maskCompile(shader){ maskCompileImpl(shader, null); }
@@ -982,6 +1180,18 @@ function applyMask(node){
   }});
 }
 function updateMaskUniforms(){}   // baked cage; the rim height is set per-rebuild from the wrapper
+// Invisible depth-mask occluder (adapted from the occuloader.html approach): a hidden clone of the wrapper, inflated slightly, that writes DEPTH ONLY — so anything poking through the solid paper vanishes exactly to the mesh shape. Renders AFTER the visible paper (so the paper shows) but BEFORE flowers (renderOrder 1; flowers are 2).
+let occluderNode=null;
+function makeWrapperOccluder(wrapper, inflateFrac){
+  const occ=wrapper.clone(true); occ.name='wrapOccluder';
+  const mat=new THREE.MeshBasicMaterial({ colorWrite:false, depthWrite:true, depthTest:true, side:THREE.DoubleSide });
+  occ.traverse(o=>{ if(o.isMesh&&o.geometry){
+    let g=o.geometry.clone(); if(g.index)g=g.toNonIndexed(); g.computeVertexNormals(); g.computeBoundingSphere();
+    const inf=(g.boundingSphere?g.boundingSphere.radius:1)*(inflateFrac||0.012);   // inflate ∝ mesh size → scale-independent skin
+    const p=g.attributes.position, n=g.attributes.normal; for(let i=0;i<p.count;i++){ p.setXYZ(i, p.getX(i)+n.getX(i)*inf, p.getY(i)+n.getY(i)*inf, p.getZ(i)+n.getZ(i)*inf); } p.needsUpdate=true;
+    o.geometry=g; o.material=mat; o.renderOrder=1; o.frustumCulled=false; } });
+  return occ;
+}
 // yellow glow on the selected flower (clone its materials so only this one glows)
 function glowNode(node){
   try{ node.traverse(o=>{ if(o.isMesh&&o.material){
@@ -1002,11 +1212,11 @@ function recolorNode(node,hex){
 // SELECTION: a white "sticker" silhouette outline that hugs the flower (inflated back-faces in screen space),
 // cut by the same deleter cage so it matches the visible flower exactly.
 function outlineCompile(shader){   // SAFE: only a world-pos varying + the cage discard (no project_vertex override)
-  shader.uniforms.uRimY=SU.uRimY; shader.uniforms.uBaseY=SU.uBaseY; shader.uniforms.uGrid=SU.uGrid; shader.uniforms.uNodeY=SU.uNodeY; shader.uniforms.uOpen=SU.uOpen; shader.uniforms.uAng=SU.uAng;
+  shader.uniforms.uRimY=SU.uRimY; shader.uniforms.uBaseY=SU.uBaseY; shader.uniforms.uGrid=SU.uGrid; shader.uniforms.uNodeY=SU.uNodeY; shader.uniforms.uOpen=SU.uOpen; shader.uniforms.uAng=SU.uAng; shader.uniforms.uCageTex=SU.uCageTex; shader.uniforms.uCageMax=SU.uCageMax; shader.uniforms.uCageOn=SU.uCageOn; shader.uniforms.uCageTight=SU.uCageTight; shader.uniforms.uOccTex=SU.uOccTex; shader.uniforms.uOccOn=SU.uOccOn; shader.uniforms.uOccMin=SU.uOccMin; shader.uniforms.uOccSize=SU.uOccSize;
   shader.vertexShader='varying vec3 vWp;\n'+shader.vertexShader.replace('#include <begin_vertex>',
     '#include <begin_vertex>\n  vWp=(modelMatrix*vec4(transformed,1.0)).xyz;');
   shader.fragmentShader=DECL+shader.fragmentShader.replace('#include <clipping_planes_fragment>',
-    '#include <clipping_planes_fragment>\n  float cl; float cr=delR(vWp,cl); float tt2=clamp((vWp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0); if(tt2<cl && length(vWp.xz)>cr){ discard; }');
+    '#include <clipping_planes_fragment>\n  if(uCageOn>0.5){ float a2=fract(atan(vWp.z,vWp.x)*0.15915494); float t3=clamp((vWp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0); vec4 cg=texture2D(uCageTex,vec2(a2,t3)); if(cg.g>0.5 && t3<0.999 && length(vWp.xz)>cg.r*uCageMax*uCageTight){ discard; } } else { float cl; float cr=delR(vWp,cl); float tt2=clamp((vWp.y-uBaseY)/max(uRimY-uBaseY,1e-4),0.0,1.0); if(tt2<cl && length(vWp.xz)>cr){ discard; } }');
 }
 // scaled-hull outline: a white copy of the flower inflated ~6% about its centre, back-faces only → a sticker border
 function makeOutline(node){
@@ -1182,50 +1392,81 @@ async function rebuild(){
   const my=++rebuildToken;
   spin(true);
   try{
-    // wrapper
-    const wdef=WRAPPERS.find(w=>w.id===state.wrapper);
-    const wsrc=await loadModel(wdef.src); if(my!==rebuildToken)return;
+    // wrapper — OPTIONAL. Default = a clean hand-tied bouquet with NO paper (stems converge at G = the natural tie).
+    // "wrap it" (state.wrapOn) shows the paper; vase mode is its own presentation. The algorithmic generator stays
+    // wrapperless — wrapped looks come from saved owner/signature designs (which carry wrapOn=true).
     while(bouquetGroup.children.length)bouquetGroup.remove(bouquetGroup.children[0]); selRing=null; selectedNode=null;
-    const wrapK=1+Math.min(1,Math.max(0,(state.stems.length-3)/30))*0.28; wrapperNode=fitStanding(wsrc.clone(true),WRAP_H*wrapK);   // wrapper grows with price (more flowers ⇒ bigger vessel)
-    // REPLACE the glassy transmission material with a fully OPAQUE matte paper so the wrapper truly occludes
-    // everything behind it (the GLBs ship as KHR transmission/volume, which renders see-through).
-    // The wrapper is ONE fused mesh (bow baked into the paper), so we colorize the height-band where the ribbon ties.
-    const _ty=wrapperNode.userData.topY||3, by0=_ty*0.13, by1=_ty*0.32;   // tight band on the ribbon (not the cone above it)
-    wrapperNode.traverse(o=>{ if(o.isMesh&&o.material){
-      const old=Array.isArray(o.material)?o.material[0]:o.material; const map=(old&&old.map)||null;
-      const m=new THREE.MeshStandardMaterial({ map:map, color:map?0xffffff:((old&&old.color&&old.color.getHex)?old.color.getHex():0xece6da), roughness:0.9, metalness:0.0, side:THREE.DoubleSide });
-      if(state.wrapColor){ m.onBeforeCompile=(sh)=>hueOnlyCompile(sh,state.wrapColor); m.customProgramCacheKey=function(){return 'wraphue_'+state.wrapColor;}; }   // recolour the whole wrapper (paper) via the no-cage hue shader; green parts are preserved
-      o.material=m;
-    }});
-    bouquetGroup.add(wrapperNode);
-    const topY=wrapperNode.userData.topY, halfW=wrapperNode.userData.halfW||0.6;
-    // optional real bow mesh tied to the FRONT of the wrapper (skipped in vase mode), auto-sized to the wrapper width
-    if(!state.vaseOn && state.bow){ const bdef=BOWS.find(b=>b.id===state.bow);
-      if(bdef){ try{ const bsrc=await loadModel(bdef.src); if(my!==rebuildToken)return;
-        const _bp=(DELETERS[state.wrapper]&&DELETERS[state.wrapper].bow)||null;   // per-wrapper bow placement (tuned in lab.html), else global defaults
-        const bY=_bp&&_bp.y!=null?_bp.y:BOW_Y, bF=_bp&&_bp.fwd!=null?_bp.fwd:BOW_FWD, bW=_bp&&_bp.w!=null?_bp.w:BOW_W, bR=_bp&&_bp.rotY!=null?_bp.rotY:BOW_ROT_Y;
-        const bow=fitToWidth(bsrc.clone(true), Math.max(0.35, halfW*bW)); solidify(bow, state.bowColor||null);
-        bow.position.set(halfW*bF, topY*bY, 0); bow.rotation.set(BOW_ROT_X,bR,0);
-        bouquetGroup.add(bow);
-      }catch(e){ console.warn('bow load failed',e); } } }
-    // Manual converge point + scissor trim volumes; the opaque paper still occludes whatever is inside it.
-    const cage=setCage(state.wrapper); SU.uRimY.value=topY*(cage.rimMul||1); SU.uBaseY.value=0; for(let _i=0;_i<NH*NA;_i++)SU.uGrid.value[_i]*=wrapK;   // load THIS wrapper's sculpted cage, scaled to the grown wrapper
-    const _gf=cage.gather; const G=(state.gather&&state.gather.length===3)?new THREE.Vector3(state.gather[0],state.gather[1],state.gather[2]):(_gf&&_gf.length===3?new THREE.Vector3(_gf[0]*topY,_gf[1]*topY,_gf[2]*topY):new THREE.Vector3(0,topY*0.45,0));   // per-wrapper baked converge point, else default throat
+    const wrapK=1+Math.min(1,Math.max(0,(state.stems.length-3)/30))*0.28;   // arrangement grows a touch with price
+    const showWrap = state.wrapOn && !state.vaseOn;
+    let topY, halfW, _cageGather=null;
+    if(showWrap){
+      const wdef=WRAPPERS.find(w=>w.id===state.wrapper);
+      const wsrc=await loadModel(wdef.src); if(my!==rebuildToken)return;
+      wrapperNode=fitStanding(wsrc.clone(true),WRAP_H*wrapK);   // wrapper grows with price (more flowers ⇒ bigger vessel)
+      // REPLACE the glassy transmission material with a fully OPAQUE matte paper so the wrapper truly occludes (the GLBs ship as KHR transmission/volume, which renders see-through).
+      wrapperNode.traverse(o=>{ if(o.isMesh&&o.material){
+        const old=Array.isArray(o.material)?o.material[0]:o.material; const map=(old&&old.map)||null;
+        const m=new THREE.MeshStandardMaterial({ map:map, color:map?0xffffff:((old&&old.color&&old.color.getHex)?old.color.getHex():0xece6da), roughness:0.9, metalness:0.0, side:THREE.DoubleSide });
+        if(state.wrapColor){ m.onBeforeCompile=(sh)=>hueOnlyCompile(sh,state.wrapColor); m.customProgramCacheKey=function(){return 'wraphue_'+state.wrapColor;}; }   // recolour the whole wrapper (paper) via the no-cage hue shader; green parts are preserved
+        o.material=m;
+      }});
+      bouquetGroup.add(wrapperNode); occluderNode=null;   // opaque wrapper occludes behind-paper; the SDF clip handles the rest
+      topY=wrapperNode.userData.topY; halfW=wrapperNode.userData.halfW||0.6;
+      // optional real bow mesh tied to the FRONT of the wrapper, auto-sized to the wrapper width
+      if(state.bow){ const bdef=BOWS.find(b=>b.id===state.bow);
+        if(bdef){ try{ const bsrc=await loadModel(bdef.src); if(my!==rebuildToken)return;
+          const _bp=(DELETERS[state.wrapper]&&DELETERS[state.wrapper].bow)||null;   // per-wrapper bow placement (tuned in lab.html), else global defaults
+          const bY=_bp&&_bp.y!=null?_bp.y:BOW_Y, bF=_bp&&_bp.fwd!=null?_bp.fwd:BOW_FWD, bW=_bp&&_bp.w!=null?_bp.w:BOW_W, bR=_bp&&_bp.rotY!=null?_bp.rotY:BOW_ROT_Y;
+          const bow=fitToWidth(bsrc.clone(true), Math.max(0.35, halfW*bW)); solidify(bow, state.bowColor||null);
+          bow.position.set(halfW*bF, topY*bY, 0); bow.rotation.set(BOW_ROT_X,bR,0);
+          bouquetGroup.add(bow);
+        }catch(e){ console.warn('bow load failed',e); } } }
+      const cage=setCage(state.wrapper); _cageGather=cage.gather; SU.uRimY.value=topY*(cage.rimMul||1); SU.uBaseY.value=0; for(let _i=0;_i<NH*NA;_i++)SU.uGrid.value[_i]*=wrapK;   // load THIS wrapper's sculpted cage, scaled to the grown wrapper
+      // CLIP = SDF OCCUPANCY (the confirmed-good 06-27 system): a GPU shader baked ONCE per wrapper (voxelized mesh inside/outside), rescaled each rebuild. True 3D test → handles folded/pointed wrappers; no per-flower CPU pass → no slider lag.
+      const _ck=state.wrapper+':'+wrapK.toFixed(2);
+      if(_cageKey!==_ck){ _cageKey=bakeWrapperCage()?_ck:null; } SU.uCageOn.value=(_cageKey===_ck)?1:0;   // radial silhouette = green-leaf-trim reference
+      if(_occKey!==state.wrapper){ _occKey=bakeWrapperOcc()?state.wrapper:null; }   // voxelize ONCE per wrapper (shape is scale-invariant)
+      if(_occKey===state.wrapper){ const _ob=new THREE.Box3().setFromObject(wrapperNode); SU.uOccMin.value.copy(_ob.min); _ob.getSize(SU.uOccSize.value); SU.uOccOn.value=1; } else { SU.uOccOn.value=0; }   // EXACT occupancy clip, rescaled to the grown wrapper
+    } else {
+      // WRAPPERLESS (or vase): no paper, no occluder, NO clip → flowers are never touched. A virtual opening drives the same proven arrangement math (stems still converge at G).
+      wrapperNode=null; occluderNode=null;
+      SU.uCageOn.value=0; SU.uOccOn.value=0; WPROF=null;
+      topY=WRAP_H*wrapK; halfW=WRAP_H*0.34*wrapK; SU.uRimY.value=topY; SU.uBaseY.value=0;
+    }
+    const G=(state.gather&&state.gather.length===3)?new THREE.Vector3(state.gather[0],state.gather[1],state.gather[2]):(_cageGather&&_cageGather.length===3?new THREE.Vector3(_cageGather[0]*topY,_cageGather[1]*topY,_cageGather[2]*topY):new THREE.Vector3(0,topY*0.45,0));   // per-wrapper baked converge point, else default throat
     let arrTop=topY;
-    if(state.vaseOn){ bouquetGroup.remove(wrapperNode); SU.uRimY.value=-1000; arrTop=topY*0.9; G.set(0,topY*0.06,0); }   // gather near the vase floor; the tumbler is auto-sized to the bouquet AFTER the loop
+    if(state.vaseOn){ if(wrapperNode)bouquetGroup.remove(wrapperNode); SU.uRimY.value=-1000; arrTop=topY*0.9; G.set(0,topY*0.06,0); }   // gather near the vase floor; the tumbler is auto-sized to the bouquet AFTER the loop
     flowerNodes=[];
+    const handTie = !showWrap && !state.vaseOn;               // clean hand-tied bouquet → pack the blooms tighter
+    const _leanK = handTie?0.6:1.0;                           // wrapperless = a closer, tighter bunch (less fan-out)
     const N=state.stems.length;
-    const sizeK=1-Math.min(0.34,Math.max(0,(N-8)/40)*0.34);   // flowers SHRINK as the bouquet fills — more, smaller blooms pack in; they never grow with price
+    // ---- ARRANGEMENT PATTERN (all keep stems converging at G; only the head direction/spread differs) ----
+    const pat=state.pattern||'natural';
+    const ringInfo=(idx)=>{ let r=0,start=0,cap=1; while(idx>=start+cap){ start+=cap; r++; cap=r*6; } return {r,pos:idx-start,cap}; };   // hex-style concentric rings (1,6,12,…) for symmetrical/alternating
+    const maxRing=ringInfo(Math.max(0,N-1)).r;
+    const altPalette=(pat==='alternating')?[...new Set(state.stems.map(s=>s.color).filter(Boolean))]:[];   // cycle the bouquet's own colours by position
+    const sizeK=1-Math.min(0.20,Math.max(0,(N-8)/45)*0.20);   // gentler shrink as the bouquet fills → blooms stay fuller (still never grow with price)
     for(let i=0;i<N;i++){
       const st=state.stems[i];
       const fdef=FLOWERS.find(f=>f.id===st.id); if(!fdef)continue;
       const src=await loadModel(st.src||fdef.src); if(my!==rebuildToken)return;
-      const t=(N>1?i/(N-1):0), phi=i*GOLD+(st.jphi||0);
-      const lean=Math.min(0.55, state.bunch*(0.12+0.40*t));    // Bunch angle (capped) so blooms stay near the opening, stems stay inside
+      if(st.slot==null)st.slot=stemSlot++;            // backfill older/loaded stems once → stable from here on
+      const isFiller=!!fdef.filler;
+      let phi, leanFrac;                              // phi = head direction around the centre; leanFrac 0..1 = how far it tips out (→ radius from the top view)
+      if(pat==='spiral'){
+        phi=i*2.39996323;                             // golden-angle phyllotaxis arm
+        leanFrac=Math.sqrt((i+0.5)/Math.max(1,N));    // radius grows outward → reads as a spiral from the top
+      } else if(pat==='symmetric' || pat==='alternating'){
+        const ri=ringInfo(i); phi=(ri.pos/ri.cap)*TAU + ri.r*0.4;   // even, mirrored concentric rings (slight twist per ring)
+        leanFrac=maxRing>0?(ri.r/maxRing):0;
+      } else {                                         // natural (default): golden-angle, STABLE per stem, with jitter
+        const lb=(st.slot*0.6180339887)%1; phi=st.slot*GOLD+(st.jphi||0); leanFrac=Math.sqrt(lb);
+      }
+      const lean=(isFiller? Math.min(0.26, state.bunch*0.28*leanFrac) : Math.min(0.74, state.bunch*(0.16+0.60*leanFrac)))*_leanK;   // fillers stay a touch tucked; _leanK tightens the bunch when wrapperless
       const up=new THREE.Vector3(Math.sin(lean)*Math.cos(phi),Math.cos(lean),Math.sin(lean)*Math.sin(phi)).normalize();
       const _refGY=state.vaseOn?arrTop*0.45:G.y;               // size heads off the arrangement top (scales with the vase) so stems shorten when the vase shrinks
       const span=(arrTop-_refGY)+0.20+state.bloomLift;         // reach from the converge point up to ~the opening
-      const reach=Math.max(0.6, span/Math.max(0.42,up.y))*(0.85+0.25*state.bloomSize)*state.stemLen;   // full reach from the converge point up to ~the opening
+      const reach=Math.max(0.6, span/Math.max(0.42,up.y))*(0.85+0.25*state.bloomSize)*state.stemLen*(isFiller?0.85:1);   // full reach from the converge point up to ~the opening; fillers sit a touch lower (tucked among the blooms)
       const fl=src.clone(true);
       let _minY=Infinity,_maxY=-Infinity;   // RAW geometry Y range — matches the shader's position.y (unaffected by any GLB node scale) so the stretch magnitude is correct
       fl.traverse(o=>{ if(o.isMesh&&o.geometry){ if(!o.geometry.boundingBox)o.geometry.computeBoundingBox(); const _g=o.geometry.boundingBox; if(_g){ if(_g.min.y<_minY)_minY=_g.min.y; if(_g.max.y>_maxY)_maxY=_g.max.y; } } });
@@ -1233,14 +1474,16 @@ async function rebuild(){
       const node=fitToHeight(fl, reach*st.scale*sizeK);   // NATURAL-proportion bloom, uniformly smaller as the bouquet fills (no width distortion)
       node.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),up)
           .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),st.spin));
-      node.position.set(G.x+(st.dx||0), G.y+(st.dy||0), G.z+(st.front||0)); // every stem base meets at the converge point
+      node.position.set(G.x+(st.dx||0), G.y+(st.dy||0), G.z+(st.front||0)); // auto stems meet at the converge point; a gizmo nudge translates the flower and it STAYS put
       if(st.tilt && st.tiltAxis){ const _ax=new THREE.Vector3(st.tiltAxis[0],st.tiltAxis[1],st.tiltAxis[2]); if(_ax.lengthSq()>1e-6)node.rotateOnWorldAxis(_ax.normalize(),st.tilt); }  // gizmo lean
       const STEM_FRAC=0.34, stretchK=1.0;   // stem-stretch disabled: each flower fits naturally to the opening, so stems are never over-long and heads stay in view (a shrunk head just nestles slightly lower, which looks natural)
       node.userData.uid=st.uid; flowerNodes.push(node);
-      node.traverse(o=>{ if(o.isMesh&&o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(!m.userData)m.userData={}; m.userData.stretchK=stretchK; m.userData.stemBaseY=_minY; m.userData.stemTopY=_minY+STEM_FRAC*(_maxY-_minY); m.side=THREE.DoubleSide; });}});
+      node.traverse(o=>{ if(o.isMesh&&o.material){ o.renderOrder=2;   // flowers draw AFTER the occluder (1) so the depth mask hides their poking parts
+        (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(!m.userData)m.userData={}; m.userData.stretchK=stretchK; m.userData.stemBaseY=_minY; m.userData.stemTopY=_minY+STEM_FRAC*(_maxY-_minY); m.side=THREE.DoubleSide; });}});
       applyMask(node);                                         // scissor trim volumes
-      if(st.color)recolorNode(node,st.color);                  // per-flower colour
-      bouquetGroup.add(node);
+      const _useColor=(pat==='alternating'&&altPalette.length>1)?altPalette[i%altPalette.length]:st.color;   // alternating pattern cycles the bouquet's colours by position (display only — doesn't change saved per-flower colour)
+      if(_useColor)recolorNode(node,_useColor);                // per-flower colour
+      bouquetGroup.add(node);                                  // containment is now the SDF occupancy shader (uOccOn) — no per-flower CPU clip here
       if(st.uid===selectedUid){ selectedNode=node; node.traverse(o=>{ if(o.isMesh)o.layers.enable(1); }); selBox=new THREE.Box3().setFromObject(node); needsOutline=true; }   // outline + cache box for the gizmo
     }
     if(state.vaseOn){   // AUTO-FIT the tumbler to the actual bouquet → always proportional; Width/Height sliders just tweak it
@@ -1258,6 +1501,10 @@ async function rebuild(){
   revealStage();   // first build is now framed → fade the canvas in (no "bottom-then-center" jump)
 }
 function revealStage(){ if(_revealed)return; _revealed=true; spin(false); const cv=document.getElementById('c'); if(cv){ cv.style.transition='opacity .45s ease'; cv.style.opacity='1'; } }
+function topView(){ if(!camera||!controls)return; const t=controls.target.clone(); const d=Math.max(controls.minDistance,t.distanceTo(camera.position)||8);   // look straight down into the arrangement (frame() then refits the distance and keeps this angle)
+  camera.position.set(t.x+d*0.16, t.y+d*0.985, t.z); camera.updateProjectionMatrix(); frame(); }
+function sideView(){ if(!camera||!controls)return; const t=controls.target.clone(); const d=Math.max(controls.minDistance,t.distanceTo(camera.position)||8);   // regular front/side view (leaving Create your own)
+  camera.position.set(t.x+d*0.96, t.y+d*0.18, t.z); camera.updateProjectionMatrix(); frame(); }
 function frame(){
   if(!bouquetGroup)return;
   const box=new THREE.Box3().setFromObject(bouquetGroup); if(box.isEmpty())return;
@@ -1463,15 +1710,13 @@ function generateToBudget(budget, randomize){
   // randomize=true (Generate button) → a fresh random wrapper/vase/colours/flowers within the price.
   // randomize=false (price slider) → keep the current wrapper + look, just fit MORE/FEWER of the same flowers to the price.
   if(randomize){
-    if(WRAPPERS.length)state.wrapper=WRAPPERS[(Math.random()*WRAPPERS.length)|0].id;
-    state.vaseOn=Math.random()<0.30; if(state.vaseOn){ state.vaseW=0.85+Math.random()*0.5; state.vaseH=0.8+Math.random()*0.55; }
-    state.wrapColor=Math.random()<0.5?WRAP_COLS[(Math.random()*WRAP_COLS.length)|0]:null;
-    state.bow=(!state.vaseOn && BOWS.length && Math.random()<0.45)?BOWS[(Math.random()*BOWS.length)|0].id:null;
-    state.bowColor=(state.bow && Math.random()<0.6)?BOW_COLS[(Math.random()*BOW_COLS.length)|0]:null;
+    // ALGORITHMIC generator = clean hand-tied bouquet, NO paper. (Wrapped looks come from saved owner/signature designs, which surface randomly via generate().) A vase is still an occasional alt presentation.
+    state.wrapOn=false; state.bow=null; state.bowColor=null; state.wrapColor=null;
+    state.vaseOn=Math.random()<0.22; if(state.vaseOn){ state.vaseW=0.85+Math.random()*0.5; state.vaseH=0.8+Math.random()*0.55; }
     syncVaseUI();
   }
   const wrap=WRAPPERS.find(w=>w.id===state.wrapper)||{price:0};
-  let remaining=budget-(wrap.price||0);
+  let remaining=budget-(state.wrapOn?(wrap.price||0):0);   // wrapperless = no paper charge
   const avail=FLOWERS.filter(f=>flowerOn(f.id));
   let palette=[];   // {id, src?, color?}
   if(!randomize && state.stems.length){   // slider: keep the bouquet's existing flowers/colours
@@ -1501,22 +1746,54 @@ function generateToBudget(budget, randomize){
   nameThisBouquet(); afterChange(); showSel();
 }
 function syncVaseUI(){ const vb=document.getElementById('vaseBtn'); if(vb)vb.classList.toggle('on',state.vaseOn); const vc=document.getElementById('vaseCtl'); if(vc)vc.style.display=(state.vaseOn && !state.explore)?'flex':'none'; const vw=document.getElementById('vaseW'); if(vw)vw.value=state.vaseW; const vh=document.getElementById('vaseH'); if(vh)vh.value=state.vaseH; }   // vase Width/Height only in Edit mode
+// ---- Curated "showpiece" looks: designed palettes + compositions that Generate surfaces (scaled to the price) so every bouquet reads like a masterpiece ----
+const CURATED=[
+  {name:'Blush Romance', wrapper:'pink',                 flowers:[{id:'peony',color:'#f3d3da',w:3},{id:'whiterose',w:2},{id:'baby',w:1}]},
+  {name:'Pure Ivory',    wrapper:'white',                flowers:[{id:'whiterose',w:3},{id:'peony',color:'#f4f1ea',w:1},{id:'lily',w:1},{id:'baby',w:2}]},
+  {name:'Burgundy Velvet',wrapper:'white', bow:'gold',   flowers:[{id:'gardenrose',color:'#7a0f3a',w:3},{id:'redrose',w:2},{id:'baby',w:1}]},
+  {name:'Sunset Garden', wrapper:'natural', bow:'gold',  flowers:[{id:'sunflower',w:2},{id:'dahlia',color:'#f0a878',w:2},{id:'gardenrose',color:'#e8c020',w:1}]},
+  {name:'Lavender Dream',wrapper:'white',                flowers:[{id:'dahlia',color:'#8e5bb0',w:2},{id:'hydrangea',w:2},{id:'whiterose',w:2}]},
+  {name:'Classic Red',   wrapper:'natural', bow:'red',   flowers:[{id:'redrose',w:4},{id:'baby',w:1}]},
+  {name:'Peony Cloud',   wrapper:'pink',                 flowers:[{id:'peony',color:'#f3d3da',w:2},{id:'peony',color:'#f4f1ea',w:2},{id:'baby',w:1}]},
+  {name:'Coral Charm',   wrapper:'natural',              flowers:[{id:'peony',color:'#f0795f',w:2},{id:'dahlia',color:'#f0a878',w:2},{id:'smallrose',w:1}]},
+  {name:'Blue Serenity', wrapper:'white',                flowers:[{id:'hydrangea',w:3},{id:'whiterose',w:2},{id:'baby',w:1}]},
+  {name:'Golden Hour',   wrapper:'natural', bow:'gold',  flowers:[{id:'sunflower',w:2},{id:'gardenrose',color:'#e8c020',w:2},{id:'dahlia',color:'#e8c020',w:1}]},
+  {name:'Rose Noir',     wrapper:'white', wrapColor:'#4a4a52', bow:'red', flowers:[{id:'redrose',w:3},{id:'gardenrose',color:'#7a0f3a',w:2},{id:'baby',w:1}]},
+  {name:'Spring Pastel', wrapper:'pink',                 flowers:[{id:'peony',color:'#f3d3da',w:2},{id:'dahlia',color:'#f0a878',w:1},{id:'lily',color:'#e87aa6',w:1},{id:'baby',w:1}]},
+];
+let _curIdx=-1;
+function generateCurated(budget){
+  let idx; do{ idx=(Math.random()*CURATED.length)|0; }while(CURATED.length>1 && idx===_curIdx); _curIdx=idx;
+  const rc=CURATED[idx];
+  state.wrapper=(rc.wrapper && WRAPPERS.some(w=>w.id===rc.wrapper))?rc.wrapper:'natural';   // remembered for "wrap it", but the generator shows the curated palette UNWRAPPED (clean hand-tied)
+  state.wrapOn=false; state.bow=null; state.bowColor=null; state.wrapColor=null;
+  state.vaseOn=!!rc.vase; if(state.vaseOn){ state.vaseW=1; state.vaseH=1; }
+  syncVaseUI();
+  const fl=(rc.flowers||[]).filter(f=>FLOWERS.some(x=>x.id===f.id) && flowerOn(f.id));
+  if(!fl.length){ generateToBudget(budget,true); return; }   // recipe's flowers all disabled → fall back to a random surprise
+  const wrap=WRAPPERS.find(w=>w.id===state.wrapper)||{price:0}; let remaining=budget-(state.wrapOn?(wrap.price||0):0);   // wrapperless = no paper charge
+  const prc=id=>{ const f=FLOWERS.find(x=>x.id===id); return f?f.price:3; };
+  const cheapest=Math.min.apply(null,fl.map(f=>prc(f.id)));
+  const bag=[]; fl.forEach(f=>{ const w=Math.max(1,f.w||1); for(let i=0;i<w;i++)bag.push(f); });   // weighted by the recipe's ratios
+  state.stems=[]; selectedUid=null; let guard=0;
+  while(remaining>=cheapest && state.stems.length<MAX_STEMS && guard++<400){
+    let f=bag[(Math.random()*bag.length)|0];
+    if(prc(f.id)>remaining){ const aff=fl.filter(x=>prc(x.id)<=remaining); if(!aff.length)break; f=aff[(Math.random()*aff.length)|0]; }
+    const st=makeStem(f.id); if(f.color)st.color=f.color; state.stems.push(st); remaining-=prc(f.id);
+  }
+  state.sigName=rc.name; state.sigShop=null; state.sigPrice=null; state.sigOrig=null; _sigKey=null;
+  afterChange(); showSel();
+}
+function generateShowpiece(budget){ if(CURATED.length && Math.random()<0.8){ generateCurated(budget); } else { generateToBudget(budget,true); } }   // mostly curated masterpieces, sometimes a fresh random surprise
 function generate(){
   const cb=document.getElementById('createBtn'); const inCreate=cb&&cb.classList.contains('on');
-  if((inCreate || !state.explore) && state.stems.length){ generateFromSelection(); return; }   // EDIT mode / Create: keep the flowers/colours/additions, just revary the arrangement
-  // EXPLORE mode → a fresh, fully-random design within the chosen budget
-  if(cloudSignatures.length && Math.random()<0.22){                                  // sometimes feature a florist signature
+  if((inCreate || !state.explore) && state.stems.length){ generateFromSelection(); return; }   // EDIT / Create: keep the flowers, just revary the arrangement
+  const budEl=document.getElementById('budget'); const bud=budEl?(parseInt(budEl.value,10)||45):45;
+  if(cloudSignatures.length && Math.random()<0.15){                                  // occasionally feature a florist's saved signature
     const fresh=cloudSignatures.filter(s=> s.id!==_lastSigId || cloudSignatures.length===1);
-    if(fresh.length){ const deals=fresh.filter(s=>s.sale_price!=null); const pick=(deals.length&&Math.random()<0.4)?deals[rand(deals.length)]:fresh[rand(fresh.length)]; _lastSigId=pick.id; pushHistory(); state.vaseOn=false; syncVaseUI(); applyDesign(pick); return; }
+    if(fresh.length){ const deals=fresh.filter(s=>s.sale_price!=null); const pick=(deals.length&&Math.random()<0.4)?deals[rand(deals.length)]:fresh[rand(fresh.length)]; _lastSigId=pick.id; pushHistory(); state.vaseOn=false; syncVaseUI(); applyDesign(pick); playSparkle('burst'); playSound('chime'); return; }
   }
-  pushHistory();
-  if(WRAPPERS.length)state.wrapper=WRAPPERS[(Math.random()*WRAPPERS.length)|0].id;    // random wrapper
-  state.vaseOn=Math.random()<0.35;                                                    // ~1 in 3 comes in a vase
-  if(state.vaseOn){ state.vaseW=0.85+Math.random()*0.45; state.vaseH=0.8+Math.random()*0.5; }
-  state.bowColor=null;   // explore keeps the wrapper's natural bow (no random recolor)
-  syncVaseUI();
-  const budEl=document.getElementById('budget'); generateToBudget(budEl?(parseInt(budEl.value,10)||45):45, true);          // Generate = a fresh random design within the budget
-  playSparkle('burst'); playSound('chime');
+  pushHistory(); generateShowpiece(bud); playSparkle('burst'); playSound('chime');
 }
 // Presets (Dozen / 2 Dozen / 50): a FRESH bouquet of n flowers using the current flower mix (or roses)
 function genPreset(n){
@@ -1529,7 +1806,7 @@ function genPreset(n){
 
 /* ---------------- pricing ---------------- */
 function priceOf(){
-  let total=WRAPPERS.find(w=>w.id===state.wrapper).price, counts={};
+  let total=state.wrapOn?(WRAPPERS.find(w=>w.id===state.wrapper).price||0):0, counts={};   // wrapperless bouquets aren't charged for paper
   for(const st of state.stems){ const f=FLOWERS.find(x=>x.id===st.id); total+=f.price; counts[st.id]=(counts[st.id]||0)+1; }
   return {total,counts};
 }
@@ -1633,12 +1910,16 @@ function installOwner(){
   const sigStatus=document.getElementById('sigStatus'); let _sigPhotoTarget=null;
   async function refreshSigs(){ const c=document.getElementById('sigList'); if(!c)return; c.innerHTML=''; let list=[]; try{ list=await sigList(); }catch(e){ return; }
     list.forEach(s=>{ const row=document.createElement('div'); row.style.cssText='display:flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--line);border-radius:7px;padding:5px 7px';
-      const nm=document.createElement('span'); nm.style.flex='1'; nm.textContent=s.name; row.appendChild(nm);
-      const pr=document.createElement('b'); if(s.sale_price!=null){ pr.innerHTML='$'+s.sale_price+' <span style="opacity:.5;font-weight:400;text-decoration:line-through">$'+(s.price!=null?s.price:0)+'</span>'; } else { pr.textContent='$'+(s.price!=null?s.price:0); } row.appendChild(pr);
+      const isPool=s.kind==='pool';
+      const viewIt=()=>{ applyDesign(s); owner.classList.remove('on'); };   // load this exact saved design into the main view
+      const nm=document.createElement('span'); nm.style.flex='1'; nm.style.cursor='pointer'; nm.title='View this design'; if(isPool){ nm.textContent='◇ Pool design'; nm.style.opacity='.7'; } else nm.textContent=s.name; nm.onclick=viewIt; row.appendChild(nm);
+      const pr=document.createElement('b'); if(isPool){ pr.textContent='pool'; pr.style.cssText='opacity:.5;font-weight:600;font-size:11px'; } else if(s.sale_price!=null){ pr.innerHTML='$'+s.sale_price+' <span style="opacity:.5;font-weight:400;text-decoration:line-through">$'+(s.price!=null?s.price:0)+'</span>'; } else { pr.textContent='$'+(s.price!=null?s.price:0); } row.appendChild(pr);
+      const vw=document.createElement('button'); vw.textContent='👁'; vw.title='View this design'; vw.style.cssText='border:none;background:none;cursor:pointer;font-size:13px'; vw.onclick=viewIt; row.appendChild(vw);
       const ph=document.createElement('button'); ph.textContent='📷'+(s.photos&&s.photos.length?(' '+s.photos.length):''); ph.title='Add real sample photos'; ph.style.cssText='border:none;background:none;cursor:pointer;font-size:13px'; ph.onclick=()=>{ _sigPhotoTarget=s.id; document.getElementById('sigPhotoFile').click(); }; row.appendChild(ph);
       const del=document.createElement('button'); del.textContent='✕'; del.title='Delete'; del.style.cssText='border:none;background:none;color:#c33;cursor:pointer;font-size:13px'; del.onclick=async()=>{ try{ await sigDelete(s.id); refreshSigs(); }catch(e){} }; row.appendChild(del);
       c.appendChild(row); }); }
   document.getElementById('sigSaveBtn').onclick=async()=>{ if(!flUser){ sigStatus.textContent='Log in first.'; return; } const nm=document.getElementById('sigName').value.trim(); const pr=parseFloat(document.getElementById('sigPrice').value)||0; const dlv=document.getElementById('sigDeal').value; const sale=(dlv!==''&&!isNaN(parseFloat(dlv)))?parseFloat(dlv):null; if(!nm){ sigStatus.textContent='Give it a name first.'; return; } sigStatus.textContent='Saving…'; try{ await sigSave(nm,pr,sale); document.getElementById('sigName').value=''; document.getElementById('sigPrice').value=''; document.getElementById('sigDeal').value=''; sigStatus.textContent='✓ Saved "'+nm+'".'; refreshSigs(); }catch(err){ sigStatus.textContent='Failed: '+err.message; } };
+  document.getElementById('poolSaveBtn').onclick=async()=>{ if(!flUser){ sigStatus.textContent='Log in first.'; return; } sigStatus.textContent='Saving to pool…'; try{ await poolSave(); sigStatus.textContent='✓ Added to the generator pool — appears randomly for customers (no name/price).'; refreshSigs(); }catch(err){ sigStatus.textContent='Failed: '+err.message; } };
   document.getElementById('sigPhotoFile').onchange=async function(){ const files=this.files; if(!files||!files.length||!_sigPhotoTarget)return; sigStatus.textContent='Uploading photos…'; try{ await sigAddPhotos(_sigPhotoTarget, files); sigStatus.textContent='✓ Sample photos added.'; refreshSigs(); }catch(e){ sigStatus.textContent='Photo upload failed: '+e.message; } this.value=''; };
   document.getElementById('ownExport').onclick=()=>{ const a=document.createElement('a'); a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(shop,null,2)); a.download='shop.json'; document.body.appendChild(a); a.click(); a.remove();
     alert('Saved "shop.json".\n\n1) Put it in your site\'s MAIN folder (next to index.html).\n2) In GitHub Desktop: Commit, then Push.\n\nNow every device & customer sees these exact settings — background, lighting, frame, sounds, and which flowers are offered.'); };
@@ -1688,7 +1969,7 @@ function buildUI(){
   });
   const wraps=document.getElementById('wraps');
   WRAPPERS.forEach(w=>chip(wraps,w,'select',w.id===state.wrapper,(b)=>{
-    state.wrapper=w.id;
+    state.wrapper=w.id; state.wrapOn=true;   // choosing a paper turns the wrap ON (dedicated one-click stem-wrap button = next build)
     Array.prototype.forEach.call(wraps.children,c=>c.classList.remove('on')); b.classList.add('on');
     updatePrice(); rebuild(); saveState();
   }));
@@ -1700,6 +1981,11 @@ function buildUI(){
     Array.prototype.forEach.call(e.currentTarget.children,c=>c.classList.remove('on')); btn.classList.add('on');
     genPreset(state.count);   // one click → fresh bouquet of that many
   });
+  const _patSeg=document.getElementById('patternSeg');
+  if(_patSeg){ Array.prototype.forEach.call(_patSeg.children,c=>c.classList.toggle('on',c.dataset.pat===(state.pattern||'natural')));
+    _patSeg.addEventListener('click',e=>{ const btn=e.target.closest('button'); if(!btn)return; state.pattern=btn.dataset.pat;
+      Array.prototype.forEach.call(_patSeg.children,c=>c.classList.remove('on')); btn.classList.add('on');
+      rebuild(); saveState(); }); }
   const bs=document.getElementById('bsize'), bl=document.getElementById('blift'), bn=document.getElementById('bunch'), sl=document.getElementById('stemlen');
   bs.value=state.bloomSize; bl.value=state.bloomLift; bn.value=state.bunch; sl.value=state.stemLen;
   bs.oninput=()=>{ state.bloomSize=parseFloat(bs.value)||1; rebuild(); saveState(); };
@@ -1732,7 +2018,7 @@ function buildUI(){
   const favsB=document.getElementById('favsBtn'); if(favsB)favsB.onclick=openFavs;
   const fsB=document.getElementById('fsBtn'); if(fsB)fsB.onclick=toggleFullView;
   const fsC=document.getElementById('fsCustom'); if(fsC)fsC.onclick=toggleFullView;   // exit full view → reveals the 4 main buttons + Edit
-  const fsG=document.getElementById('fsGen2'); if(fsG)fsG.onclick=()=>{ const bv=document.getElementById('fsBudget'); generateToBudget(bv?(parseInt(bv.value,10)||45):45, true); };   // Generate = random wrapper/vase/flower/colour combo within the price
+  const fsG=document.getElementById('fsGen2'); if(fsG)fsG.onclick=generate;   // Generate = a curated showpiece (mostly) / random surprise, scaled to the price
   const fsO=document.getElementById('fsOrder'); if(fsO)fsO.onclick=openOrder;
   const fsBud=document.getElementById('fsBudget'), fsBudV=document.getElementById('fsBudgetVal'), mainBud=document.getElementById('budget');
   if(fsBud){ let ft=null; const sv=()=>{ if(fsBudV)fsBudV.textContent='$'+fsBud.value; if(mainBud)mainBud.value=fsBud.value; };   // price slider: low → small/cheaper, high → fuller/pricier (keeps the panel slider in sync)
@@ -1892,7 +2178,7 @@ if(location.protocol==='file:'){
   buildUI();
   autoBackground();
   if(restored){ updatePrice(); updateCounts(); rebuild(); }
-  else { state.wrapper='natural'; state.vaseOn=false; state.wrapColor=null; state.bow=null; state.bowColor=null; state.stems=[makeStem('smallrose')]; generateToBudget(45,false); }   // first visit → a classic rose bouquet at the default price (light + fast)
+  else { generateCurated(45); }   // first visit → a curated showpiece masterpiece at the default price
   loadThumbs();  // fill the chips with real pictures (async); flowers that fail stay a colour swatch
   loadSignatures(); updateFavCount();
   document.getElementById('app').classList.add('immersive');   // DEFAULT = full-screen shopping view (Customize · price slider · Order); "✎ Customize" reveals the full panel
