@@ -421,7 +421,7 @@ function setPR(pr){ if(pr===_curPR)return; _curPR=pr; renderer.setPixelRatio(pr)
 function showLoading(on){ document.getElementById('loading').classList.toggle('on',on); }
 const HOME={pos:new THREE.Vector3(0,11.6,3.85), tgt:new THREE.Vector3(0,1.3,0)};   // telephoto top view, closer → bouquet fills the bigger circle
 function init(){
-  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true}); renderer.outputEncoding=THREE.sRGBEncoding;
+  renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'}); renderer.outputEncoding=THREE.sRGBEncoding;
   renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.06; _maxAniso=renderer.capabilities.getMaxAnisotropy()||8; resize();
   _envTex=buildEnvTex();   // studio reflections for the metallic gold/silver fillers
   scene=new THREE.Scene();
@@ -547,12 +547,12 @@ function prepFlower(src,colorHex,finish,prerot){
   const node=src.clone(true); if(prerot)node.rotation.z=prerot; node.updateMatrixWorld(true);   // optional pre-rotation to stand a model upright
   const g=new THREE.Group();
   node.traverse(o=>{ if(!(o.isMesh&&o.geometry))return;
-    let geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone(); geo=geo.clone(); geo.applyMatrix4(o.matrixWorld);
+    let geo=o.geometry.clone(); geo.applyMatrix4(o.matrixWorld);   // keep indexed geometry (was toNonIndexed → 3x vertex bloat)
     const src0=Array.isArray(o.material)?o.material[0]:o.material, map=(src0&&src0.map)||null;
     let mat;
     if(finish){ mat=new THREE.MeshStandardMaterial({ color:finish.color, roughness:finish.rough, metalness:1.0, envMap:_envTex, envMapIntensity:1.15, side:THREE.DoubleSide }); mat.userData.metal=true; }   // solid metallic surface (drop the petal texture for a clean gold/silver)
     else { mat=new THREE.MeshStandardMaterial({ map, color:map?0xffffff:((src0&&src0.color&&src0.color.getHex)?src0.color.getHex():0xcccccc), roughness:0.45, metalness:0, envMapIntensity:_gloss, side:THREE.DoubleSide });
-      if(mat.map){ mat.map.encoding=THREE.sRGBEncoding; mat.map.anisotropy=_maxAniso; mat.map.minFilter=THREE.LinearMipmapLinearFilter; mat.map.generateMipmaps=true; mat.map.needsUpdate=true; }
+      if(mat.map){ mat.map.encoding=THREE.sRGBEncoding; mat.map.anisotropy=Math.min(4,_maxAniso); mat.map.minFilter=THREE.LinearMipmapLinearFilter; mat.map.generateMipmaps=true; mat.map.needsUpdate=true; }
       if(colorHex){ mat.onBeforeCompile=sh=>hueCompile(sh,colorHex); mat.customProgramCacheKey=()=>'hue_'+colorHex; } }
     g.add(new THREE.Mesh(geo,mat)); });
   let bb=new THREE.Box3().setFromObject(g); const minY=bb.min.y, H=(bb.max.y-minY)||1; const thr=minY+0.06*H;
@@ -579,7 +579,7 @@ function mandalaPoints(o){ const P=[]; mandalaShapes(o).forEach(s=>{ if(o.onePer
 
 // ---- rebuild ----
 const tplCache={};
-async function getTpl(fid,colorHex){ const key=fid+'|'+(colorHex||'nat')+'|v'+_gloss.toFixed(2); if(tplCache[key])return tplCache[key]; const src=await loadModel(SRC[fid]); const t=prepFlower(src,colorHex,FINISH[fid],PREROT[fid]); tplCache[key]=t; return t; }
+async function getTpl(fid,colorHex){ const key=fid+'|'+(colorHex||'nat'); if(tplCache[key])return tplCache[key]; const src=await loadModel(SRC[fid]); const t=prepFlower(src,colorHex,FINISH[fid],PREROT[fid]); tplCache[key]=t; return t; }
 function readUI(){ const counts={}; SHAPES.forEach(s=>{ const el=document.getElementById('cnt_'+s.id); counts[s.id]=el?Math.max(0,+el.value||0):0; });
   const g=id=>+document.getElementById(id).value, on=id=>document.getElementById(id).checked;
   return { counts, flare:g('flare'), size:g('size'),
@@ -904,10 +904,10 @@ document.getElementById('tlGlass').onclick=()=>{ const on=!vase.visible;
 // ---- paper wrapper (hollow shell that hugs the bouquet) ----
 async function ensureWrapper(){ if(wrapper||_wrapLoading)return; _wrapLoading=true;
   try{ const src=await loadModel(SRC.wrapper); const node=src.clone(true); node.updateMatrixWorld(true); const g=new THREE.Group();
-    node.traverse(o=>{ if(!(o.isMesh&&o.geometry))return; let geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone(); geo=geo.clone(); geo.applyMatrix4(o.matrixWorld);
+    node.traverse(o=>{ if(!(o.isMesh&&o.geometry))return; let geo=o.geometry.clone(); geo.applyMatrix4(o.matrixWorld);   // keep indexed geometry
       const s0=Array.isArray(o.material)?o.material[0]:o.material, map=(s0&&s0.map)||null;
       const mat=new THREE.MeshStandardMaterial({ map, color:map?0xffffff:0xece0cf, roughness:0.72, metalness:0, side:THREE.DoubleSide });
-      if(map){ map.encoding=THREE.sRGBEncoding; map.anisotropy=_maxAniso; map.needsUpdate=true; }
+      if(map){ map.encoding=THREE.sRGBEncoding; map.anisotropy=Math.min(4,_maxAniso); map.needsUpdate=true; }
       g.add(new THREE.Mesh(geo,mat)); });
     const bb=new THREE.Box3().setFromObject(g),sz=bb.getSize(new THREE.Vector3()),c=bb.getCenter(new THREE.Vector3()),k=1/(sz.y||1);
     g.children.forEach(m=>{ m.geometry.translate(-c.x,-c.y,-c.z); m.geometry.scale(k,k,k); });   // centred at origin, unit height
