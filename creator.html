@@ -9,8 +9,8 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
   html,body{margin:0;height:100%;overflow:hidden;color:var(--ink);background:#3f4a44}
   /* shop backdrop (drop in a real photo via #backdrop background-image) */
-  #backdrop{position:absolute;inset:0;z-index:0;background:
-    radial-gradient(130% 100% at 50% 16%, #3684aa 0%, #256d96 48%, #154864 100%);}   /* default ocean-blue backdrop */
+  #backdrop{position:absolute;inset:0;z-index:0;background-color:#256d96;
+    background-image:url('bg1.png');background-size:cover;background-position:center;background-repeat:no-repeat;}   /* photo backdrop (bg1.png); flat colour is the fallback */
   #backdrop::after{content:"";position:absolute;inset:0;background:
     radial-gradient(60% 40% at 50% 16%, rgba(255,255,255,.13), transparent 70%);}
   #vignette{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:1;
@@ -27,6 +27,7 @@
   #raiseCtl button{width:46px;height:46px;border-radius:50%;border:none;background:rgba(58,72,98,.9);color:#fff;font-size:18px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.32)}
   #raiseCtl button:active{background:var(--brand)}
   #raiseCtl span{font-size:11px;font-weight:700;color:#fff;background:rgba(58,72,98,.9);padding:2px 9px;border-radius:8px}
+  #raiseCtl #raiseDel{background:rgba(160,52,44,.94);font-size:16px}
   .gzb.del{background:rgba(206,72,60,.92)}
   .gzb.dup{background:rgba(66,150,92,.92)}
   .gzb:active{background:var(--brand)}
@@ -35,6 +36,8 @@
   #loading{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:4;display:none;flex-direction:column;align-items:center;gap:10px;color:#5b6b52;font-size:13px}
   #loading.on{display:flex}
   #loading .ring{width:38px;height:38px;border-radius:50%;border:4px solid rgba(120,140,110,.3);border-top-color:var(--brand);animation:sp .85s linear infinite}
+  /* hide the default UI (circle + bar + icons) until the first bouquet is built → no flash on load */
+  body:not(.ready) #vignette, body:not(.ready) #bar, body:not(.ready) #toolsTR, body:not(.ready) #fullView, body:not(.ready) #gen, body:not(.ready) #done, body:not(.ready) #bigmandala{visibility:hidden!important}
   @keyframes sp{to{transform:rotate(360deg)}}
   /* corner UI */
   .rnd{width:40px;height:40px;border-radius:50%;border:none;background:#fff;color:var(--brand);font-size:17px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center}
@@ -42,7 +45,9 @@
   #toolsTL{position:absolute;left:14px;top:66px;z-index:6;display:none;flex-direction:column;gap:10px}
   #toolsTL.show{display:flex}
   .rnd.on{background:var(--brand);color:#fff}
-  body.fullview #bar, body.fullview #toolsTR, body.fullview #done, body.fullview #gizmo, body.fullview #markers{display:none!important}   /* keep ⚙ Options (+ its panel) in full view so the background colour is reachable */
+  @keyframes heartbeat{0%{transform:scale(1)}14%{transform:scale(1.38)}28%{transform:scale(.9)}42%{transform:scale(1.28)}62%{transform:scale(.97)}100%{transform:scale(1)}}
+  .rnd.beat{animation:heartbeat .85s ease}
+  body.fullview #bar, body.fullview #done, body.fullview #markers{display:none!important}   /* keep ⚙ Options + the JUNPO brand/♡/☰ cluster in full view; gizmo IS allowed in full view */
   body.fullview #vignette{display:none!important}   /* no backdrop circle in the big presentation view */
   body.fullview #bigmandala{width:min(92vh,860px);height:min(92vh,860px);top:46%}
   body.fullview #gen{bottom:28px}
@@ -50,8 +55,66 @@
   #fvGreen{position:absolute;right:16px;bottom:28px;z-index:7;display:none;width:46px;height:46px;border-radius:50%;border:none;background:rgba(58,72,98,.82);color:#fff;font-size:21px;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.32);align-items:center;justify-content:center}
   body.fullview #fvGreen{display:flex}
   #fvGreen.on{background:var(--brand)}
+  #fvFlower{position:absolute;right:70px;bottom:28px;z-index:7;display:none;width:46px;height:46px;border-radius:50%;border:none;background:rgba(58,72,98,.82);color:#fff;font-size:20px;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.32);align-items:center;justify-content:center}
+  body.fullview #fvFlower{display:flex}
+  #fvFlower.on{background:var(--brand)}
+  #swapBar{position:absolute;left:8px;right:8px;bottom:88px;z-index:8;display:none;gap:6px;overflow-x:auto;overflow-y:hidden;padding:8px 10px;background:rgba(24,28,38,.55);border-radius:16px;box-shadow:0 8px 22px rgba(0,0,0,.34);-webkit-overflow-scrolling:touch}
+  #swapBar.on{display:flex}
+  #swapBar .chip{width:66px}
+  #swapBar .chip .sw{width:56px;height:56px}
+  #swapBar .chip .nm{color:#eae4d8}
+  body:not(.fullview) #swapBar{display:none!important}
+  #greenBar{position:absolute;left:8px;right:8px;bottom:88px;z-index:8;display:none;gap:6px;overflow-x:auto;overflow-y:hidden;padding:8px 10px;background:rgba(24,28,38,.55);border-radius:16px;box-shadow:0 8px 22px rgba(0,0,0,.34);-webkit-overflow-scrolling:touch}
+  #greenBar.on{display:flex}
+  #greenBar .chip{width:66px}
+  #greenBar .chip .sw{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;background:#3c4a40}
+  #greenBar .chip .nm{color:#eae4d8}
+  #greenBar .chip.sel .sw{box-shadow:0 0 0 3px var(--brand)}
+  body:not(.fullview) #greenBar{display:none!important}
+  #greenCtl{position:absolute;left:8px;right:8px;bottom:188px;z-index:8;display:none;align-items:center;gap:12px;overflow-x:auto;padding:9px 12px;background:rgba(24,28,38,.62);border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.34)}
+  #greenCtl.on{display:flex}
+  #greenCtl .gcName{color:#fff;font-weight:700;font-size:12px;flex:none;min-width:50px}
+  #greenCtl .gcS{display:flex;flex-direction:column;font-size:10px;color:#cfc8ba;gap:3px;flex:none;text-align:center}
+  #greenCtl .gcS input{width:160px;accent-color:var(--brand)}
+  #greenCtl #gcOff{flex:none;border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:13px}
+  body:not(.fullview) #greenCtl{display:none!important}
+  #fvPattern{position:absolute;left:92px;bottom:26px;z-index:7;display:none;width:46px;height:46px;border-radius:50%;border:none;background:rgba(58,72,98,.82);color:#fff;font-size:20px;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.32);align-items:center;justify-content:center}
+  body.fullview #fvPattern{display:flex}
+  #fvPattern.on{background:var(--brand)}
+  #patternBar{position:absolute;left:8px;right:8px;bottom:88px;z-index:8;display:none;gap:10px;overflow-x:auto;overflow-y:hidden;padding:10px 12px;background:rgba(24,28,38,.55);border-radius:16px;box-shadow:0 8px 22px rgba(0,0,0,.34);-webkit-overflow-scrolling:touch;align-items:center}
+  #patternBar.on{display:flex}
+  .pcell{flex:none;display:flex;flex-direction:column;align-items:center;gap:5px;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 8px}
+  .pcell.sel{box-shadow:0 0 0 2px var(--brand)}
+  .pcell canvas{width:30px;height:30px;cursor:pointer}
+  .pstep{display:flex;align-items:center;gap:7px}
+  .pstep button{width:26px;height:26px;border:none;border-radius:7px;background:rgba(255,255,255,.18);color:#fff;font-size:15px;cursor:pointer}
+  .pstep .pnum{color:#fff;font-weight:700;font-size:13px;min-width:16px;text-align:center}
+  .pcell .pnm{font-size:9.5px;color:#eae4d8}
+  #patternBar .pslide{flex:none;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10px;font-weight:700;color:#eae4d8;background:rgba(255,255,255,.08);border-radius:12px;padding:9px 12px}
+  #patternBar .pslide input{width:120px;accent-color:var(--brand)}
+  body:not(.fullview) #patternBar{display:none!important}
+  #favModal{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(20,24,20,.55)}
+  #favModal.on{display:flex}
+  #favSheet{width:min(94vw,820px);max-height:88vh;background:#fbf8f1;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden}
+  #favHead{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+  #favHead b{font-size:15px;color:#3a4a34;font-style:italic;letter-spacing:.5px}
+  #favHead button{border:none;background:rgba(0,0,0,.06);width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;color:#555}
+  #favGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;padding:18px;overflow-y:auto}
+  .favCard{position:relative;border-radius:12px;overflow:hidden;background:#eef3ec;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.14);aspect-ratio:1/1}
+  .favCard img{width:100%;height:100%;object-fit:cover;display:block}
+  .favCard .favDel{position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(20,20,20,.55);color:#fff;font-size:12px;cursor:pointer}
+  .favCard .favExp{position:absolute;top:5px;left:5px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(20,20,20,.55);color:#fff;font-size:12px;cursor:pointer;line-height:1}
+  .favEmpty{grid-column:1/-1;text-align:center;color:#9aa893;padding:34px 6px;font-size:13px}
+  #favBig{position:fixed;inset:0;z-index:22;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(15,18,15,.84);padding:22px}
+  #favBig.on{display:flex}
+  #favBigImg{max-width:min(90vw,680px);max-height:72vh;border-radius:16px;box-shadow:0 16px 50px rgba(0,0,0,.55);background:#eef3ec}
+  #favBigClose{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.92);font-size:18px;cursor:pointer;color:#333}
+  #favBigUse{border:none;background:var(--brand);color:#fff;font-weight:700;font-size:15px;padding:12px 28px;border-radius:12px;cursor:pointer;box-shadow:0 7px 20px rgba(120,50,15,.4)}
   #toolsTR{position:absolute;right:14px;top:14px;z-index:6;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
-  #brand{background:#fff;border-radius:12px;padding:7px 12px;box-shadow:0 4px 14px rgba(0,0,0,.18);text-align:center;line-height:1;color:#2f3a2c}
+  #brand{width:78px;height:78px;background:rgba(255,255,255,.92);border-radius:15px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;color:#2f3a2c}
+  #brandImg{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;padding:8px;box-sizing:border-box}
+  #brandTxt{display:none;flex-direction:column;align-items:center;gap:0}
+  #brandTxt .bmark{font-size:19px;line-height:1.15;color:var(--brand)}
   #brand b{font-size:16px;letter-spacing:1px;font-style:italic;color:#3a4a34}
   #brand span{font-size:8px;letter-spacing:3px;color:#9aa893}
   #fullView{position:absolute;left:14px;bottom:154px;z-index:6;border:none;background:rgba(0,0,0,.4);color:#fff;border-radius:9px;padding:7px 11px;font-size:12px;cursor:pointer}
@@ -136,12 +199,27 @@
   <button class="rnd" title="Share">➤</button>
 </div>
 <div id="toolsTR">
-  <div id="brand"><b>JUNPO</b><br><span>FLOWERS</span></div>
-  <button class="rnd" title="Favourite">♡</button>
-  <button class="rnd" title="Menu">☰</button>
+  <div id="brand"><img id="brandImg" src="logo.png" alt="Junpo" draggable="false" onerror="this.style.display='none';var t=document.getElementById('brandTxt');if(t)t.style.display='flex'"><div id="brandTxt"><div class="bmark">✿</div><b>Junpo</b><span>FLOWERS</span></div></div>
+  <button class="rnd" id="favBtn" title="Save this bouquet">♡</button>
+  <button class="rnd" id="savedBtn" title="Saved bouquets">☰</button>
 </div>
+<div id="favModal"><div id="favSheet"><div id="favHead"><b>Saved bouquets</b><button id="favClose">✕</button></div><div id="favGrid"></div></div></div>
+<div id="favBig"><button id="favBigClose">✕</button><img id="favBigImg" alt="saved bouquet"><button id="favBigUse">Use this bouquet</button></div>
 <button id="fullView">⛶ Full view</button>
 <button id="fvGreen" title="Add greenery & fillers">🌿</button>
+<button id="fvFlower" title="Swap flowers in the bouquet">🌸</button>
+<div id="swapBar"></div>
+<button id="fvPattern" title="Pattern options">✿</button>
+<div id="patternBar"></div>
+<div id="greenBar"></div>
+<div id="greenCtl">
+  <span id="gcName" class="gcName"></span>
+  <label class="gcS">More<input type="range" id="gcMore" min="0" max="3" step="0.05"></label>
+  <label class="gcS">Size<input type="range" id="gcSize" min="0.4" max="2.2" step="0.05"></label>
+  <label class="gcS">Height<input type="range" id="gcHeight" min="-0.6" max="2.2" step="0.02"></label>
+  <label class="gcS">Lay<input type="range" id="gcLay" min="0" max="1.4" step="0.02"></label>
+  <button id="gcOff" title="Remove this greenery">✕</button>
+</div>
 <button id="gen">✦ Generate</button>
 <button id="done">✓ Done</button>
 <div id="gizmo">
@@ -158,7 +236,7 @@
   <button class="gzb" data-op="smaller" title="Smaller">－</button>
   <button class="gzb" data-op="tiltR" title="Tilt">⤵</button>
 </div>
-<div id="raiseCtl"><button id="raiseUp" title="Raise the selected flowers">▲</button><span>Raise</span><button id="raiseDn" title="Lower the selected flowers">▼</button></div>
+<div id="raiseCtl"><button id="raiseUp" title="Raise the selected flowers">▲</button><span>Raise</span><button id="raiseDn" title="Lower the selected flowers">▼</button><button id="raiseDel" title="Remove these flowers">🗑</button></div>
 
 <div id="bar">
   <div class="barSec collapsed" id="barL">
@@ -330,6 +408,7 @@ const typeFlower={}, typeColor={}; SHAPES.forEach(s=>{ typeFlower[s.id]=s.flower
 let assignType=SHAPES[0].id, mandalaSeed=12345, designSeed=7, patternOn=false;
 const assigned={}; SHAPES.forEach(s=>assigned[s.id]=s.def>0);   // default slots start assigned (show the red/white rose bouquet on load)
 const changedSlots=new Set();   // slots the user has picked a flower for → their mandala icons become the real flower
+const fillerSize={};   // per-filler size multiplier from the greenery compact bar (undefined = 1)
 const markerPts=[];           // {pos, type} per bloom → floating "assign me" glyph markers over the 3D
 function spinFor(i){ let s=(designSeed^Math.imul(i+1,0x9e3779b1))>>>0; s=Math.imul(s^(s>>>15),s|1); s^=s+Math.imul(s^(s>>>7),s|61); return (((s^(s>>>14))>>>0)/4294967296)*TAU; }
 function srand(seed){ let s=seed>>>0; return ()=>{ s=(s+0x6D2B79F5)>>>0; let t=s; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
@@ -350,9 +429,9 @@ function init(){
   key=new THREE.DirectionalLight(0xffffff,1.05); key.position.set(3.5,6,4); scene.add(key);
   rim=new THREE.DirectionalLight(0xffe8cf,0.5); rim.position.set(-4,3,-3); scene.add(rim);
   camera=new THREE.PerspectiveCamera(20,1,0.1,200); camera.position.copy(HOME.pos);
-  controls=new THREE.OrbitControls(camera,canvas); controls.enableDamping=true; controls.enablePan=false; controls.target.copy(HOME.tgt);   // no pan → bouquet always orbits its own centre (stays centred)
+  controls=new THREE.OrbitControls(camera,canvas); controls.enableDamping=true; controls.dampingFactor=0.045; controls.rotateSpeed=0.13; controls.enablePan=false; controls.target.copy(HOME.tgt);   // slower + smoother orbit "flow" around the bouquet; no pan → stays centred
   resize();   // apply the view offset now that the camera exists
-  bouquet=new THREE.Group(); scene.add(bouquet); setupOutline();
+  bouquet=new THREE.Group(); scene.add(bouquet); setupOutline(); setupGlow();
   vase=buildVaseGroup(0.5,0.85); vase.visible=false; scene.add(vase);   // optional glass tumbler (sized/placed by updateVase)
   try{ const pm=new THREE.PMREMGenerator(renderer); const ec=document.createElement('canvas'); ec.width=8; ec.height=32; const ex=ec.getContext('2d'); const g2=ex.createLinearGradient(0,0,0,32); g2.addColorStop(0,'#ffffff'); g2.addColorStop(0.55,'#e8eef0'); g2.addColorStop(1,'#aab4ba'); ex.fillStyle=g2; ex.fillRect(0,0,8,32); const et=new THREE.CanvasTexture(ec); et.mapping=THREE.EquirectangularReflectionMapping; scene.environment=pm.fromEquirectangular(et).texture; et.dispose(); pm.dispose(); }catch(e){}
   addEventListener('resize',()=>{ resize(); requestRender(); });
@@ -363,13 +442,39 @@ function init(){
   (function loop(){ requestAnimationFrame(loop); const m=controls.update(); if(m||performance.now()<_renderUntil){ renderScene(); drawMarkers(); if(selFlower&&!_gizmoHold)updateGizmo(); } })();
   applyLighting();
   rebuild();
+  setTimeout(()=>document.body.classList.add('ready'),3500);   // safety net: reveal UI even if the first build stalls
 }
 function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h,false); if(camera){ camera.aspect=w/h;
   const full=document.body.classList.contains('fullview'), portrait=h>w;
-  const oy = full ? (portrait ? 0.03 : ((vase&&vase.visible)?0.205:0.135)) : 0.10;   // full view: push bouquet up into the room above on wide screens; on a tall phone screen barely shift it (it was sitting too high)
+  const oy = full ? (portrait ? 0.03 : ((vase&&vase.visible)?0.04:0.135)) : 0.10;   // full view: wrapper/handtie push up ~0.135; the vase sits taller so it needs far less push (was 0.205 = too high)
   camera.setViewOffset(w,h,0,Math.round(h*oy),w,h); camera.updateProjectionMatrix(); } }
 // ---- screen-space white "sticker" outline (selected items live on layer 1; rendered to a target, then a border is drawn around their silhouette)
 let selRT,outlineScene,outlineCam,outlineMat; const _v2=new THREE.Vector2();
+// GENERATE GLOW: gold "sticker-lift" halo that sweeps around the whole bouquet on a new arrangement.
+let glowRT,glowScene,glowMat,glowActive=false,glowStart=0,glowMaskMat; const GLOW_MS=1000;   // thin fast sweep
+function playBouquetGlow(){ if(!glowMat)return; glowActive=true; glowStart=performance.now(); _renderUntil=Math.max(_renderUntil,performance.now()+GLOW_MS+150); }
+function glowSubjects(){ const s=[bouquet]; if(vase&&vase.visible)s.push(vase); if(wrapper&&wrapper.visible)s.push(wrapper); return s; }   // flowers + whichever holder is showing
+function setupGlow(){ glowRT=new THREE.WebGLRenderTarget(2,2); glowRT.texture.minFilter=THREE.LinearFilter; glowRT.texture.magFilter=THREE.LinearFilter;
+  glowMat=new THREE.ShaderMaterial({ transparent:true, depthTest:false, depthWrite:false,
+    uniforms:{ uTex:{value:null}, uTexel:{value:new THREE.Vector2(0.001,0.001)}, uR:{value:2.5},
+      uInt:{value:0.0}, uCenter:{value:new THREE.Vector2(0.5,0.5)}, uSweep:{value:0.0}, uBand:{value:0.12}, uColor:{value:new THREE.Color(0xffe9a8)} },
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
+    fragmentShader:'varying vec2 vUv; uniform sampler2D uTex; uniform vec2 uTexel; uniform vec3 uColor; uniform float uR; uniform float uInt; uniform vec2 uCenter; uniform float uSweep; uniform float uBand;\n'+
+      'void main(){ float cov=texture2D(uTex,vUv).a; float wsum=1.0;\n'+
+      ' for(int i=0;i<20;i++){ float an=float(i)/20.0*6.2831853; vec2 d=vec2(cos(an),sin(an));\n'+
+      '  cov+=texture2D(uTex, vUv+d*uR*uTexel).a;\n'+
+      '  cov+=texture2D(uTex, vUv+d*uR*0.5*uTexel).a; wsum+=2.0; }\n'+
+      ' cov/=wsum;\n'+
+      ' float core=smoothstep(0.5-uBand,0.5,cov)-smoothstep(0.5,0.5+uBand,cov);\n'+
+      ' float dd=abs(mod(atan(vUv.y-uCenter.y, vUv.x-uCenter.x)-uSweep+3.14159265,6.2831853)-3.14159265);\n'+
+      ' float shine=exp(-dd*dd*1.2);\n'+
+      ' float bright=core*(0.24+1.1*shine);\n'+
+      ' float al=clamp(bright,0.0,1.0)*uInt;\n'+
+      ' if(al<0.003) discard;\n'+
+      ' vec3 col=mix(uColor, vec3(1.0), shine*0.7);\n'+
+      ' gl_FragColor=vec4(col, al); }' });
+  glowMaskMat=new THREE.MeshBasicMaterial({color:0xffffff});   // solid mask so transparent glass/wrapper still make a silhouette
+  glowScene=new THREE.Scene(); const gq=new THREE.Mesh(new THREE.PlaneGeometry(2,2),glowMat); gq.frustumCulled=false; glowScene.add(gq); }
 function setupOutline(){ selRT=new THREE.WebGLRenderTarget(2,2); selRT.texture.minFilter=THREE.LinearFilter; selRT.texture.magFilter=THREE.LinearFilter;
   outlineMat=new THREE.ShaderMaterial({ transparent:true, depthTest:false, depthWrite:false,
     uniforms:{ tSel:{value:selRT.texture}, res:{value:new THREE.Vector2(2,2)}, w:{value:3}, col:{value:new THREE.Color(0xffffff)} },
@@ -381,7 +486,27 @@ function renderScene(){ if((selGlow||selHL)&&selRT){ const sz=renderer.getDrawin
     renderer.render(scene,camera);
     outlineMat.uniforms.res.value.copy(sz); outlineMat.uniforms.w.value=3.0*renderer.getPixelRatio();
     const ac=renderer.autoClear; renderer.autoClear=false; renderer.render(outlineScene,outlineCam); renderer.autoClear=ac;
-  } else renderer.render(scene,camera); }
+  } else renderer.render(scene,camera);
+  if(glowActive && bouquet){
+    const t=(performance.now()-glowStart)/GLOW_MS;
+    if(t>=1){ glowActive=false; glowSubjects().forEach(g=>g.traverse(o=>{ if(o.isMesh)o.layers.disable(2); })); }
+    else{
+      _renderUntil=Math.max(_renderUntil,performance.now()+120);   // keep the on-demand loop alive through the sweep
+      const sz=renderer.getDrawingBufferSize(_v2), gw=Math.max(2,Math.floor(sz.x*0.3)), gh=Math.max(2,Math.floor(sz.y*0.3));   // low-res silhouette: fills inter-flower gaps + cheap
+      if(glowRT.width!==gw||glowRT.height!==gh)glowRT.setSize(gw,gh);
+      const subs=glowSubjects(); subs.forEach(g=>g.traverse(o=>{ if(o.isMesh)o.layers.enable(2); }));   // flowers + vase/wrapper (freshly loaded too)
+      const pmo=scene.overrideMaterial; scene.overrideMaterial=glowMaskMat;   // force solid so glass/wrapper register
+      renderer.setRenderTarget(glowRT); renderer.clear(); camera.layers.set(2); renderer.render(scene,camera); camera.layers.set(0); renderer.setRenderTarget(null);
+      scene.overrideMaterial=pmo;
+      const bb=new THREE.Box3(); subs.forEach(g=>bb.expandByObject(g)); const c=bb.getCenter(new THREE.Vector3()).project(camera);
+      glowMat.uniforms.uCenter.value.set(c.x*0.5+0.5, c.y*0.5+0.5);
+      glowMat.uniforms.uTex.value=glowRT.texture; glowMat.uniforms.uTexel.value.set(1/gw,1/gh);
+      const up=Math.min(1,t/0.14), down=1-Math.max(0,Math.min(1,(t-0.55)/0.45)); let env=up*down; env=env*env*(3-2*env);
+      glowMat.uniforms.uInt.value=env;
+      glowMat.uniforms.uSweep.value=-Math.PI+t*Math.PI*2*1.0;
+      const ac2=renderer.autoClear; renderer.autoClear=false; renderer.render(glowScene,outlineCam); renderer.autoClear=ac2;
+    }
+  } }
 // ---- faux-glass tumbler (ported from BloomMaker index.html — cheap glass, no transmission pass) ----
 const VASE_TUMBLER={ profile:[[0.235,0],[0.235,0.05],[0.235,0.62],[0.25,1.0]] };
 function smoothLathe(points){ if(!points||points.length<3)return points?points.slice():[]; const curve=new THREE.SplineCurve(points); const out=curve.getPoints(Math.max(40,(points.length-1)*10)); for(const p of out){ if(p.x<0.008)p.x=0.008; } return out; }
@@ -472,7 +597,8 @@ async function rebuild(){
     else { const s=pts[(k*7+3)%Math.max(1,mainN)]||{x:0,z:0}; const a=spinFor(kk+99), jr=0.08+0.22*(spinFor(kk+12)/TAU); x=(s.x||0)+Math.cos(a)*jr; z=(s.z||0)+Math.sin(a)*jr; }
     pts.push({x,z,fill}); } };
   if(o.baby>0)scatter(o.baby,'baby',0); if(o.branch>0)scatter(o.branch,'branch',5000); if(o.yellow>0)scatter(o.yellow,'yellow',9000); if(o.pine>0)scatter(o.pine,'pine',13000); if(o.berry>0)scatter(o.berry,'berry',17000); if(o.twig>0)scatter(o.twig,'twig',21000); if(o.gberry>0)scatter(o.gberry,'gberry',25000); if(o.ygold>0)scatter(o.ygold,'ygold',29000); if(o.ysilver>0)scatter(o.ysilver,'ysilver',33000); if(o.rball>0)scatter(o.rball,'rball',37000); if(o.bgold>0)scatter(o.bgold,'bgold',41000); if(o.bsilver>0)scatter(o.bsilver,'bsilver',45000); if(o.pcone>0)scatter(o.pcone,'pcone',49000);
-  const assign=pts.map(p=>{ if(p.fill)return {fid:p.fill,col:null,fill:true}; const fid=typeFlower[p.type]||'smallrose'; return {fid, col:typeColor[p.type]||TINT[fid]||null}; });
+  const assign=pts.map((p,idx)=>{ const ov=flowerOverride[idx]; if(ov)return {fid:ov, col:TINT[ov]||null, fill:false};   // single-flower swap wins over slot/filler
+    if(p.fill)return {fid:p.fill,col:null,fill:true}; const fid=typeFlower[p.type]||'smallrose'; return {fid, col:typeColor[p.type]||TINT[fid]||null}; });
   const need=new Map(); assign.forEach(a=>{ const k=a.fid+'|'+(a.col||'nat'); if(!need.has(k))need.set(k,a); });
   extras.forEach(ex=>{ const col=TINT[ex.fid]||null; const k=ex.fid+'|'+(col||'nat'); if(!need.has(k))need.set(k,{fid:ex.fid,col}); });   // duplicates may use a flower not in the mandala
   const tmap={}; for(const [k,a] of need){ const t=await getTpl(a.fid,a.col); if(my!==_tok)return; tmap[k]=t; }
@@ -487,7 +613,7 @@ async function rebuild(){
     const lay=a.fill?(o[a.fid+'Lay']||0):0;   // babyLay / branchLay / yellowLay
     const lean=Math.min(1.55, o.flare*rp + lay);   // branches share the flowers' dome axis + their own lay-down
     const up=new THREE.Vector3(Math.sin(lean)*Math.cos(phi),Math.cos(lean),Math.sin(lean)*Math.sin(phi)).normalize();
-    const scl=(a.fill?(o.fillSize*(isBranch?1.1:1)):o.size)*(SIZEADJ[a.fid]||1);
+    const scl=(a.fill?(o.fillSize*(isBranch?1.1:1)*(fillerSize[a.fid]||1)):o.size)*(SIZEADJ[a.fid]||1);
     const raise=a.fill?(o[a.fid+'Raise']||0):0;   // babyRaise / branchRaise / yellowRaise
     _q.setFromUnitVectors(UP0,up);
     if(isBranch){ const z0=_zt.set(0,0,1).applyQuaternion(_q); const d=up.y; _ut.set(-up.x*d,1-up.y*d,-up.z*d); if(_ut.lengthSq()<1e-6)_ut.set(1,0,0); else _ut.normalize(); const theta=Math.atan2(_cr.crossVectors(z0,_ut).dot(up), z0.dot(_ut)); _q.multiply(_q2.setFromAxisAngle(UP0,theta)); }   // branches: tilt the broad leafy face UP → fan up-and-out, no droop
@@ -504,8 +630,8 @@ async function rebuild(){
   if(my!==_tok)return;
   if(patternOn)drawMini(o);
   _bloomN=pts.filter(p=>!p.fill).length; _flowerSz=o.size; if(vase&&vase.visible)updateVase(); if(wrapper&&wrapper.visible)updateWrapper();   // vase/wrapper auto-fit the flowers
-  applyGloss(); setPR(bouquet.children.length>45?1.0:Math.min(2,(devicePixelRatio||1)*1.35)); requestRender(900);
-  showLoading(false);
+  applyGloss(); setPR(bouquet.children.length>24?1.0:Math.min(1.5,(devicePixelRatio||1))); requestRender(900);   // lower pixel ratio (was dpr*1.35, cap 2) → ~40% fewer pixels/frame, much faster orbit/generate
+  showLoading(false); document.body.classList.add('ready');   // reveal the UI only once the first bouquet is built (no flash of default icons/circle)
 }
 function applyGloss(){ bouquet.traverse(m=>{ if(m.isMesh&&m.material&&!m.material.userData.metal&&'envMapIntensity' in m.material){ m.material.envMapIntensity=_gloss; m.material.roughness=Math.max(0.1,0.45-_gloss*0.3); } }); }
 
@@ -522,7 +648,7 @@ function onDbl(e){ const r=canvas.getBoundingClientRect(); _ndc.x=((e.clientX-r.
   const hits=_ray.intersectObjects(bouquet.children,true); if(hits.length){ const h=hits[0]; if(h.object.isInstancedMesh&&h.instanceId!=null&&h.object.userData.meta)selectFlower(h.object,h.instanceId); } }   // DOUBLE tap → gizmo on just that one
 
 // ---- gizmo: tap a flower → white outline + move / scale / spin / remove ----
-let selFlower=null, selGlow=null, selType=null, selHL=null, _gizmoHold=false; const overrides={}, deleted=new Set(), extras=[], undoStack=[], typeRaiseY={};
+let selFlower=null, selGlow=null, selType=null, selHL=null, _gizmoHold=false; const overrides={}, deleted=new Set(), extras=[], undoStack=[], typeRaiseY={}, flowerOverride={};   // flowerOverride: pi → fid, swaps a single flower without changing its whole slot
 const _gp=new THREE.Vector3(),_gq=new THREE.Quaternion(),_gs=new THREE.Vector3(),_gq2=new THREE.Quaternion(),_gm=new THREE.Matrix4();
 function clearHL(){ if(selHL){ selHL.forEach(m=>{ scene.remove(m); if(m.material)m.material.dispose(); }); selHL=null; } }
 function deselect(){ if(selGlow){ scene.remove(selGlow); if(selGlow.material)selGlow.material.dispose(); selGlow=null; } clearHL(); selFlower=null; selType=null; document.getElementById('gizmo').classList.remove('on'); document.getElementById('raiseCtl').classList.remove('on'); requestRender(); }
@@ -573,14 +699,21 @@ function raiseSelType(dy){ if(!selType)return; typeRaiseY[selType]=(typeRaiseY[s
   const run=()=>raiseSelType(pair[1]), stop=()=>{ if(t){clearInterval(t);t=null;} };
   b.addEventListener('pointerdown',e=>{ e.stopPropagation(); if(!selType)return; pushUndo(); run(); t=setInterval(run,140); });
   b.addEventListener('pointerup',stop); b.addEventListener('pointerleave',stop); });
+function deleteSelType(){ if(!selType)return; pushUndo();   // remove every flower of the selected slot (same mechanism as the gizmo trash → persists + undoable)
+  bouquet.children.forEach(im=>{ if(!im.isInstancedMesh||!im.userData.meta)return; let ch=false;
+    im.userData.meta.forEach((md,k)=>{ if(!md||md.type!==selType)return; deleted.add(md.pi); im.getMatrixAt(k,_gm); _gm.decompose(_gp,_gq,_gs); _gs.setScalar(0.0001); _gm.compose(_gp,_gq,_gs); im.setMatrixAt(k,_gm); ch=true; });
+    if(ch)im.instanceMatrix.needsUpdate=true; });
+  deselect(); requestRender(); }
+document.getElementById('raiseDel').addEventListener('pointerdown',e=>{ e.stopPropagation(); deleteSelType(); });
 // ---- undo (Ctrl/⌘+Z) ----
-function snapState(){ const ov={}; for(const k in overrides)ov[k]=overrides[k].toArray(); return { ov, del:[...deleted], ex:extras.map(e=>({fid:e.fid,type:e.type,m:e.m.toArray()})), tr:Object.assign({},typeRaiseY) }; }
+function snapState(){ const ov={}; for(const k in overrides)ov[k]=overrides[k].toArray(); return { ov, del:[...deleted], ex:extras.map(e=>({fid:e.fid,type:e.type,m:e.m.toArray()})), tr:Object.assign({},typeRaiseY), fo:Object.assign({},flowerOverride) }; }
 function pushUndo(){ undoStack.push(snapState()); if(undoStack.length>60)undoStack.shift(); }
 function doUndo(){ if(!undoStack.length)return; const s=undoStack.pop();
   for(const k in overrides)delete overrides[k]; for(const k in s.ov)overrides[k]=new THREE.Matrix4().fromArray(s.ov[k]);
   deleted.clear(); s.del.forEach(d=>deleted.add(d));
   extras.length=0; s.ex.forEach(e=>extras.push({fid:e.fid,type:e.type,m:new THREE.Matrix4().fromArray(e.m)}));
   for(const k in typeRaiseY)delete typeRaiseY[k]; Object.assign(typeRaiseY, s.tr||{});
+  for(const k in flowerOverride)delete flowerOverride[k]; Object.assign(flowerOverride, s.fo||{});
   deselect(); rebuild(); }
 window.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z')){ if(/INPUT|TEXTAREA/.test(e.target.tagName))return; e.preventDefault(); doUndo(); } });
 
@@ -635,6 +768,111 @@ function setupThumbObserver(){ if(_thumbObs)_thumbObs.disconnect(); _thumbObs=ne
 const fwrap=document.getElementById('flowers');
 BLOOMS.forEach(f=>{ const c=document.createElement('button'); c.className='chip'; c.dataset.id=f.id; c.innerHTML='<span class="sw" style="background:'+f.dot+'"></span><span class="nm">'+f.name+'</span>'; c.onclick=()=>{ typeFlower[assignType]=f.id; assigned[assignType]=true; changedSlots.add(assignType); refreshPickers(); rebuild(); }; fwrap.appendChild(c); });
 setupThumbObserver();   // lazy-render chip thumbnails as they scroll into view
+// ---- Full-view flower SWAP bar (🌸 next to greenery → scroller above Generate) ----
+(function buildSwapBar(){ const swrap=document.getElementById('swapBar'); if(!swrap)return;
+  BLOOMS.forEach(f=>{ const c=document.createElement('button'); c.className='chip'; c.dataset.id=f.id; c.innerHTML='<span class="sw" style="background:'+f.dot+'"></span><span class="nm">'+f.name+'</span>'; c.onclick=()=>swapBouquetFlower(f.id); swrap.appendChild(c); }); })();
+const _swapURL={};
+async function swapThumb(fid,chip){ let url=_swapURL[fid]; if(!url){ url=await makeThumb(fid); if(!url)return; _swapURL[fid]=url; } const sw=chip.querySelector('.sw'); if(sw){ sw.textContent=''; sw.style.backgroundImage='url('+url+')'; sw.style.backgroundSize='cover'; sw.style.backgroundPosition='center'; sw.style.backgroundColor='#fff'; } }
+let _swapThumbed=false;
+function renderSwapThumbs(){ if(_swapThumbed)return; _swapThumbed=true; document.querySelectorAll('#swapBar .chip').forEach(c=>swapThumb(c.dataset.id,c)); }
+function syncSwapSel(){ const fid=typeFlower[assignType]; document.querySelectorAll('#swapBar .chip').forEach(c=>c.classList.toggle('on',c.dataset.id===fid)); }
+function swapBouquetFlower(fid){
+  if(selFlower && selFlower.pi!=null){ pushUndo(); flowerOverride[selFlower.pi]=fid; syncSwapSel(); rebuild(); return; }   // an individual flower is selected (double-click) → change ONLY that one
+  const types=selType?[assignType]:SHAPES.filter(s=>assigned[s.id]).map(s=>s.id); if(!types.length)return;   // a slot is selected, else every active bloom slot
+  types.forEach(t=>{ typeFlower[t]=fid; assigned[t]=true; changedSlots.add(t); }); refreshPickers(); syncSwapSel(); rebuild(); }
+// ---- Full-view greenery/filler SWAP bar (🌿 → icon scroller + compact slider bar per filler) ----
+const FILLDEF=[ {id:'baby',name:'Baby',e:'✿'},{id:'branch',name:'Branch',e:'🌿'},{id:'yellow',name:'Yellow',e:'🌼'},{id:'pine',name:'Pine',e:'🌲'},{id:'berry',name:'Berry',e:'🔴'},{id:'twig',name:'Twig',e:'🍂'},{id:'gberry',name:'Grn Berry',e:'🟢'},{id:'ygold',name:'Gold',e:'🥇'},{id:'ysilver',name:'Silver',e:'⚪'},{id:'rball',name:'Balls',e:'🔴'},{id:'bgold',name:'Gold Ball',e:'🥇'},{id:'bsilver',name:'Silv Ball',e:'⚪'},{id:'pcone',name:'Cone',e:'🌰'} ];
+(function buildGreenBar(){ const gwrap=document.getElementById('greenBar'); if(!gwrap)return;
+  FILLDEF.forEach(f=>{ const c=document.createElement('button'); c.className='chip'; c.dataset.id=f.id; c.innerHTML='<span class="sw">'+f.e+'</span><span class="nm">'+f.name+'</span>'; c.onclick=()=>selectFiller(f.id); gwrap.appendChild(c); }); })();
+let _greenThumbed=false, _selFiller=null;
+function renderGreenThumbs(){ if(_greenThumbed)return; _greenThumbed=true; document.querySelectorAll('#greenBar .chip').forEach(c=>swapThumb(c.dataset.id,c)); }
+function preloadBarThumbs(){ try{ const items=FILLDEF.map(f=>['#greenBar',f.id]).concat(BLOOMS.map(b=>['#swapBar',b.id])); let i=0;   // quietly render each icon's photo in the background so opening a bar never shows the dot fallback
+  (function next(){ if(i>=items.length)return; const it=items[i++]; const chip=document.querySelector(it[0]+' .chip[data-id="'+it[1]+'"]'); const p=chip?swapThumb(it[1],chip):Promise.resolve(); Promise.resolve(p).then(()=>setTimeout(next,140),()=>setTimeout(next,140)); })(); }catch(e){} }
+function syncGreenChips(){ document.querySelectorAll('#greenBar .chip').forEach(c=>{ const on=document.getElementById(c.dataset.id+'On'); c.classList.toggle('on',!!(on&&on.checked)); c.classList.toggle('sel',c.dataset.id===_selFiller); }); }
+function selectFiller(fid){ _selFiller=fid; const onEl=document.getElementById(fid+'On'); if(onEl&&!onEl.checked){ onEl.checked=true; onEl.dispatchEvent(new Event('change')); }   // enable if it was off (also rebuilds)
+  document.getElementById('gcMore').value=document.getElementById(fid).value;
+  document.getElementById('gcSize').value=fillerSize[fid]||1;
+  document.getElementById('gcHeight').value=document.getElementById(fid+'Raise').value;
+  document.getElementById('gcLay').value=document.getElementById(fid+'Lay').value;
+  document.getElementById('gcName').textContent=(FILLDEF.find(f=>f.id===fid)||{}).name||'';
+  document.getElementById('greenCtl').classList.add('on'); syncGreenChips(); }
+function _gcDrive(srcId,dstId){ if(!_selFiller)return; const el=document.getElementById(dstId); el.value=document.getElementById(srcId).value; el.dispatchEvent(new Event('input')); }   // write the hidden filler input → existing listener rebuilds
+document.getElementById('gcMore').addEventListener('input',()=>_gcDrive('gcMore',_selFiller));
+document.getElementById('gcHeight').addEventListener('input',()=>_gcDrive('gcHeight',_selFiller+'Raise'));
+document.getElementById('gcLay').addEventListener('input',()=>_gcDrive('gcLay',_selFiller+'Lay'));
+document.getElementById('gcSize').addEventListener('input',()=>{ if(!_selFiller)return; fillerSize[_selFiller]=+document.getElementById('gcSize').value; rebuild(); });   // per-filler size multiplier
+document.getElementById('gcOff').onclick=()=>{ if(!_selFiller)return; const onEl=document.getElementById(_selFiller+'On'); if(onEl){ onEl.checked=false; onEl.dispatchEvent(new Event('change')); } document.getElementById('greenCtl').classList.remove('on'); _selFiller=null; syncGreenChips(); };
+// ---- Full-view PATTERN options (✿ next to Exit → shape-count steppers that drive the hidden #cnt_<shape> inputs) ----
+(function buildPatternBar(){ const pb=document.getElementById('patternBar'); if(!pb)return;
+  SHAPES.forEach(s=>{ const cell=document.createElement('div'); cell.className='pcell'; cell.dataset.t=s.id; cell.title=s.name;
+    const cv=document.createElement('canvas'); cv.width=34; cv.height=34; drawGlyph(cv.getContext('2d'),17,17,11,s.id,false); cv.onclick=()=>{ assignType=s.id; refreshPickers(); syncPatternSel(); };
+    const step=document.createElement('div'); step.className='pstep';
+    const minus=document.createElement('button'); minus.textContent='−'; const num=document.createElement('span'); num.className='pnum'; const plus=document.createElement('button'); plus.textContent='+';
+    minus.onclick=()=>patStep(s.id,-1); plus.onclick=()=>patStep(s.id,1);
+    step.appendChild(minus); step.appendChild(num); step.appendChild(plus);
+    const nm=document.createElement('div'); nm.className='pnm'; nm.textContent=s.name;
+    cell.appendChild(cv); cell.appendChild(step); cell.appendChild(nm); cell._num=num; pb.appendChild(cell); });
+  const addSld=(name,dstId,min,max,step)=>{ const w=document.createElement('label'); w.className='pslide'; w.appendChild(document.createTextNode(name)); const inp=document.createElement('input'); inp.type='range'; inp.min=min; inp.max=max; inp.step=step; inp.id='p_'+dstId; inp.addEventListener('input',()=>{ const d=document.getElementById(dstId); d.value=inp.value; d.dispatchEvent(new Event('input')); }); w.appendChild(inp); pb.appendChild(w); };
+  addSld('Flare','flare',0,1.4,0.01); addSld('Size','size',0.5,2.5,0.05); })();
+const PAT_ROSE={ rose:'smallrose', tulip:'whiterose', daisy:'smallrose', lily:'whiterose', pom:'smallrose', star:'whiterose' };   // pattern additions arrive as small red / white roses
+function patStep(sid,delta){ const el=document.getElementById('cnt_'+sid); if(!el)return; const v=Math.max(0,Math.min(40,(parseInt(el.value,10)||0)+delta));
+  if(delta>0 && !changedSlots.has(sid)){ typeFlower[sid]=PAT_ROSE[sid]||'smallrose'; refreshPickers(); }   // new flowers = small red/white rose, unless the user swapped this slot with 🌸
+  el.value=v; el.dispatchEvent(new Event('input')); syncPatternCounts(); }   // writes the real count input → existing listener rebuilds
+function syncPatternCounts(){ document.querySelectorAll('#patternBar .pcell').forEach(c=>{ const el=document.getElementById('cnt_'+c.dataset.t); if(el&&c._num)c._num.textContent=parseInt(el.value,10)||0; }); }
+function syncPatternSel(){ document.querySelectorAll('#patternBar .pcell').forEach(c=>c.classList.toggle('sel',c.dataset.t===assignType)); }
+function syncPatternSliders(){ const f=document.getElementById('flare'),s=document.getElementById('size'),pf=document.getElementById('p_flare'),ps=document.getElementById('p_size'); if(pf&&f)pf.value=f.value; if(ps&&s)ps.value=s.value; }
+document.getElementById('fvPattern').onclick=e=>{ e.stopPropagation(); const bar=document.getElementById('patternBar'), btn=document.getElementById('fvPattern'); const open=!bar.classList.contains('on'); closeAllPopups(); if(open){ bar.classList.add('on'); btn.classList.add('on'); syncPatternCounts(); syncPatternSel(); syncPatternSliders(); } };
+// ---- Favourites (♡) + saved bouquet viewer (☰), upper-right ----
+const FAV_KEY='creator_favs';
+function loadFavs(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY))||[]; }catch(e){ return []; } }
+function saveFavs(a){ try{ localStorage.setItem(FAV_KEY,JSON.stringify(a)); }catch(e){} }
+function captureDesign(){ const inputs={}; document.querySelectorAll('input').forEach(el=>{ if(!el.id)return; inputs[el.id]=(el.type==='checkbox')?el.checked:el.value; });
+  return { inputs, tf:Object.assign({},typeFlower), tc:Object.assign({},typeColor), changed:[...changedSlots], fsz:Object.assign({},fillerSize), vase:!!(vase&&vase.visible), wrap:!!(wrapper&&wrapper.visible), gz:snapState(),
+    cam:{ p:camera.position.toArray(), t:controls?controls.target.toArray():[0,0,0], full:!!(document.body.classList.contains('fullview')) } }; }
+async function applyDesign(d){ if(!d)return; deselect();
+  for(const id in (d.inputs||{})){ const el=document.getElementById(id); if(!el)continue; if(el.type==='checkbox')el.checked=d.inputs[id]; else el.value=d.inputs[id]; }
+  for(const k in typeFlower)delete typeFlower[k]; Object.assign(typeFlower,d.tf||{});
+  for(const k in typeColor)delete typeColor[k]; Object.assign(typeColor,d.tc||{});
+  changedSlots.clear(); (d.changed||[]).forEach(s=>changedSlots.add(s));
+  for(const k in fillerSize)delete fillerSize[k]; Object.assign(fillerSize,d.fsz||{});
+  const g=d.gz||{}; for(const k in overrides)delete overrides[k]; if(g.ov)for(const k in g.ov)overrides[k]=new THREE.Matrix4().fromArray(g.ov[k]);
+  deleted.clear(); (g.del||[]).forEach(x=>deleted.add(x)); extras.length=0; (g.ex||[]).forEach(e=>extras.push({fid:e.fid,type:e.type,m:new THREE.Matrix4().fromArray(e.m)})); for(const k in typeRaiseY)delete typeRaiseY[k]; Object.assign(typeRaiseY,g.tr||{});
+  for(const k in flowerOverride)delete flowerOverride[k]; Object.assign(flowerOverride,g.fo||{});
+  if(vase)vase.visible=!!d.vase; if(d.wrap){ await ensureWrapper(); if(wrapper)wrapper.visible=true; } else if(wrapper)wrapper.visible=false;
+  if(typeof applyLighting==='function')applyLighting(); if(vase&&vase.visible)updateVase(); if(wrapper&&wrapper.visible)updateWrapper();
+  await rebuild(); refreshPickers();
+  if(d.cam&&camera){ if(d.cam.p)camera.position.fromArray(d.cam.p); if(controls&&d.cam.t)controls.target.fromArray(d.cam.t); if(controls)controls.update(); requestRender(500); }   // restore the exact saved view
+}
+function bouquetWorldBox(){ const box=new THREE.Box3(),m=new THREE.Matrix4(),gb=new THREE.Box3(),tb=new THREE.Box3(); const subs=(typeof glowSubjects==='function')?glowSubjects():[bouquet];
+  subs.forEach(root=>{ if(!root)return; root.updateWorldMatrix(true,true); root.traverse(o=>{
+    if(o.isInstancedMesh){ if(!o.geometry.boundingBox)o.geometry.computeBoundingBox(); gb.copy(o.geometry.boundingBox); for(let i=0;i<o.count;i++){ o.getMatrixAt(i,m); tb.copy(gb).applyMatrix4(m).applyMatrix4(o.matrixWorld); box.union(tb); } }
+    else if(o.isMesh&&o.geometry){ if(!o.geometry.boundingBox)o.geometry.computeBoundingBox(); tb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); box.union(tb); } }); });
+  return box; }   // accurate world bounds incl. every instance (setFromObject misses instanced spread in r128) + vase/wrapper
+function snapBouquetThumb(){ try{ if(!bouquet)return null; if(!_thumbR){ _thumbR=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true}); _thumbR.outputEncoding=THREE.sRGBEncoding; } _thumbR.setSize(448,448);
+  const bb=bouquetWorldBox(); if(bb.isEmpty())return null; const c=bb.getCenter(new THREE.Vector3()), sz=bb.getSize(new THREE.Vector3());
+  const dir=new THREE.Vector3(0,0.14,1); if(camera){ const tgt=controls?controls.target:c; dir.subVectors(camera.position,tgt); if(dir.lengthSq()<1e-6)dir.set(0,0.14,1); dir.normalize(); }   // aim along the user's current view direction (same angle) but with guaranteed framing
+  const fov=32, half=Math.max(sz.x,sz.y,0.001)*0.5, D=half/Math.tan(fov*0.5*Math.PI/180)*1.15 + sz.z*0.5;
+  const cam=new THREE.PerspectiveCamera(fov,1,0.01,2000); cam.position.copy(c).addScaledVector(dir,D); cam.up.set(0,1,0); cam.lookAt(c.x,c.y,c.z); cam.layers.set(0); cam.updateMatrixWorld(true);
+  _thumbR.render(scene,cam);
+  const cnv=document.createElement('canvas'); cnv.width=cnv.height=448; const cx=cnv.getContext('2d'); cx.fillStyle='#eef3ec'; cx.fillRect(0,0,448,448); cx.drawImage(_thumbR.domElement,0,0,448,448); return cnv.toDataURL('image/jpeg',0.82);
+}catch(e){ return null; } }
+function addFav(){ const favs=loadFavs(); favs.unshift({ id:Date.now(), thumb:snapBouquetThumb(), design:captureDesign() }); if(favs.length>60)favs.length=60; saveFavs(favs);
+  const b=document.getElementById('favBtn'); b.textContent='❤'; b.classList.add('on'); b.classList.remove('beat'); void b.offsetWidth; b.classList.add('beat'); setTimeout(()=>b.classList.remove('beat'),880); setTimeout(()=>{ b.textContent='♡'; b.classList.remove('on'); },1100); }
+function renderFavGrid(){ const grid=document.getElementById('favGrid'), favs=loadFavs(); grid.innerHTML=''; if(!favs.length){ grid.innerHTML='<div class="favEmpty">No saved bouquets yet — tap ♡ to save one.</div>'; return; }
+  favs.forEach(f=>{ const card=document.createElement('div'); card.className='favCard'; const img=document.createElement('img'); if(f.thumb)img.src=f.thumb; card.appendChild(img);
+    const del=document.createElement('button'); del.className='favDel'; del.textContent='✕'; del.onclick=e=>{ e.stopPropagation(); saveFavs(loadFavs().filter(x=>x.id!==f.id)); renderFavGrid(); }; card.appendChild(del);
+    const exp=document.createElement('button'); exp.className='favExp'; exp.textContent='⤢'; exp.title='View large'; exp.onclick=e=>{ e.stopPropagation(); openFavBig(f); }; card.appendChild(exp);
+    card.onclick=()=>loadFav(f); grid.appendChild(card); }); }
+function loadFav(f){ document.getElementById('favBig').classList.remove('on'); document.getElementById('favModal').classList.remove('on'); applyDesign(f.design); }   // tap a saved card → bring the 3D bouquet back
+let _bigFav=null;
+function openFavBig(f){ _bigFav=f; const img=document.getElementById('favBigImg'); img.src=f.thumb||''; document.getElementById('favBig').classList.add('on'); }
+document.getElementById('favBigClose').onclick=()=>document.getElementById('favBig').classList.remove('on');
+document.getElementById('favBig').addEventListener('pointerdown',e=>{ if(e.target.id==='favBig')e.currentTarget.classList.remove('on'); });
+document.getElementById('favBigUse').onclick=()=>{ document.getElementById('favBig').classList.remove('on'); document.getElementById('favModal').classList.remove('on'); if(_bigFav)applyDesign(_bigFav.design); };
+document.getElementById('favBtn').onclick=e=>{ e.stopPropagation(); addFav(); };
+document.getElementById('savedBtn').onclick=e=>{ e.stopPropagation(); renderFavGrid(); document.getElementById('favModal').classList.add('on'); };
+document.getElementById('favClose').onclick=()=>document.getElementById('favModal').classList.remove('on');
+document.getElementById('favModal').addEventListener('pointerdown',e=>{ if(e.target.id==='favModal')e.currentTarget.classList.remove('on'); });
 const cellCanvas={};
 (function buildShapeCells(){ const wrap=document.getElementById('shapeCounts');
   SHAPES.forEach(s=>{ const cell=document.createElement('label'); cell.className='scCell'; cell.dataset.t=s.id; cell.title=s.name;
@@ -686,13 +924,14 @@ document.getElementById('tlWrap').onclick=async()=>{ await ensureWrapper(); if(!
 ['wrapPos','wrapSize','wrapWidth','wrapRot'].forEach(id=>document.getElementById(id).addEventListener('input',updateWrapper));
 ['baby','branch','yellow','pine','berry','twig','gberry','ygold','ysilver','rball','babyRaise','branchRaise','yellowRaise','pineRaise','berryRaise','twigRaise','gberryRaise','ygoldRaise','ysilverRaise','babyLay','branchLay','yellowLay','pineLay','berryLay','twigLay','gberryLay','ygoldLay','ysilverLay','rballRaise','rballLay','bgold','bgoldRaise','bgoldLay','bsilver','bsilverRaise','bsilverLay','pcone','pconeRaise','pconeLay'].forEach(id=>document.getElementById(id).addEventListener('input',rebuild));
 ['babyOn','branchOn','yellowOn','pineOn','berryOn','twigOn','gberryOn','ygoldOn','ysilverOn','rballOn','bgoldOn','bsilverOn','pconeOn'].forEach(id=>document.getElementById(id).addEventListener('change',rebuild));
-function closeAllPopups(){ document.querySelectorAll('.popup').forEach(x=>x.classList.remove('open')); document.querySelectorAll('.ctlBtn').forEach(x=>x.classList.remove('on')); document.getElementById('fvGreen').classList.remove('on'); }
+function closeAllPopups(){ document.querySelectorAll('.popup').forEach(x=>x.classList.remove('open')); document.querySelectorAll('.ctlBtn').forEach(x=>x.classList.remove('on')); document.getElementById('fvGreen').classList.remove('on'); const sb=document.getElementById('swapBar'); if(sb)sb.classList.remove('on'); const ff=document.getElementById('fvFlower'); if(ff)ff.classList.remove('on'); const gb=document.getElementById('greenBar'); if(gb)gb.classList.remove('on'); const gc=document.getElementById('greenCtl'); if(gc)gc.classList.remove('on'); const pb=document.getElementById('patternBar'); if(pb)pb.classList.remove('on'); const fp=document.getElementById('fvPattern'); if(fp)fp.classList.remove('on'); }
 function togglePopup(id,btn){ const p=document.getElementById(id), open=!p.classList.contains('open'); closeAllPopups(); if(open){ p.classList.add('open'); if(btn)btn.classList.add('on'); } }
 document.querySelectorAll('.ctlBtn').forEach(b=>b.onclick=e=>{ e.stopPropagation(); togglePopup(b.dataset.pop,b); });
-document.getElementById('fvGreen').onclick=e=>{ e.stopPropagation(); togglePopup('popGreen',document.getElementById('fvGreen')); };   // full-view greenery/filler access
+document.getElementById('fvGreen').onclick=e=>{ e.stopPropagation(); const bar=document.getElementById('greenBar'), btn=document.getElementById('fvGreen'); const open=!bar.classList.contains('on'); closeAllPopups(); if(open){ bar.classList.add('on'); btn.classList.add('on'); renderGreenThumbs(); syncGreenChips(); } };   // full-view greenery/filler icon scroller
+document.getElementById('fvFlower').onclick=e=>{ e.stopPropagation(); const bar=document.getElementById('swapBar'), btn=document.getElementById('fvFlower'); const open=!bar.classList.contains('on'); closeAllPopups(); if(open){ bar.classList.add('on'); btn.classList.add('on'); renderSwapThumbs(); syncSwapSel(); } };   // toggle the flower swap scroller
 document.getElementById('tlColor').onclick=e=>{ e.stopPropagation(); togglePopup('popColor'); };
 document.getElementById('tlLight').onclick=e=>{ e.stopPropagation(); togglePopup('popLight'); };
-document.addEventListener('pointerdown',e=>{ if(e.target.closest('.popup')||e.target.closest('.ctlBtn')||e.target.closest('#c')||e.target.closest('#tlColor')||e.target.closest('#tlLight')||e.target.closest('#tlGlass')||e.target.closest('#tlWrap')||e.target.closest('#optionsBtn')||e.target.closest('#fvGreen'))return; closeAllPopups(); });   // click away → collapse
+document.addEventListener('pointerdown',e=>{ if(e.target.closest('.popup')||e.target.closest('.ctlBtn')||e.target.closest('#c')||e.target.closest('#tlColor')||e.target.closest('#tlLight')||e.target.closest('#tlGlass')||e.target.closest('#tlWrap')||e.target.closest('#optionsBtn')||e.target.closest('#fvGreen')||e.target.closest('#swapBar')||e.target.closest('#fvFlower')||e.target.closest('#greenBar')||e.target.closest('#greenCtl')||e.target.closest('#patternBar')||e.target.closest('#fvPattern'))return; closeAllPopups(); });   // click away → collapse
 // custom "any colour" pickers
 function shade(hex,p){ const n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255; const f=x=>{const y=p>0?x+(255-x)*p:x*(1+p); return Math.max(0,Math.min(255,Math.round(y))).toString(16).padStart(2,'0');}; return '#'+f(r)+f(g)+f(b); }
 document.getElementById('bgColor').addEventListener('input',e=>{ const c=e.target.value; document.getElementById('backdrop').style.background='radial-gradient(120% 90% at 50% 0%, '+shade(c,0.24)+' 0%, '+c+' 75%, '+shade(c,-0.3)+' 100%)'; document.querySelectorAll('#bgPick .bgsw').forEach(x=>x.classList.remove('on')); });
@@ -716,12 +955,12 @@ function setView(pattern){ patternOn=pattern;
   document.getElementById('c').style.display=pattern?'none':'block';
   document.getElementById('vignette').style.display=pattern?'none':'block';
   drawMarkers(); if(pattern)drawMini(readUI()); else requestRender(700); }
-function reseed(){ mandalaSeed=(Math.floor(performance.now()*97)^0x5bd1e995)>>>0; designSeed=(mandalaSeed*1664525+1013904223)>>>0; for(const k in overrides)delete overrides[k]; for(const k in typeRaiseY)delete typeRaiseY[k]; deleted.clear(); extras.length=0; undoStack.length=0; }   // new arrangement → drop gizmo edits
+function reseed(){ mandalaSeed=(Math.floor(performance.now()*97)^0x5bd1e995)>>>0; designSeed=(mandalaSeed*1664525+1013904223)>>>0; for(const k in overrides)delete overrides[k]; for(const k in typeRaiseY)delete typeRaiseY[k]; for(const k in flowerOverride)delete flowerOverride[k]; deleted.clear(); extras.length=0; undoStack.length=0; }   // new arrangement → drop gizmo + single-flower edits
 function resetTopView(){ if(!camera)return; camera.position.copy(HOME.pos); controls.target.set(0,(vase&&vase.visible)?0.7:1.3,0); controls.update(); requestRender(); }
-document.getElementById('gen').onclick=()=>{ reseed(); setView(false); rebuild(); if(!_fullView)resetTopView(); };   // GENERATE → fresh arrangement; in full view keep the current size + rotation
+document.getElementById('gen').onclick=()=>{ reseed(); setView(false); rebuild(); playBouquetGlow(); if(!_fullView)resetTopView(); };   // GENERATE → fresh arrangement; in full view keep the current size + rotation
 document.getElementById('patternBtn').onclick=()=>{ document.getElementById('barL').classList.toggle('collapsed'); };   // PATTERN → collapse/uncollapse the mandala icon cells
 document.getElementById('refresh').onclick=()=>{ if(!patternOn){ if(selFlower||selType)deselect(); setView(true); drawMini(readUI()); }   // NEW: 1st press → show the simple flower icons
-  else { reseed(); setView(false); rebuild(); if(!_fullView)resetTopView(); } };                        //      press again → shuffle a new design (keep view in full mode)
+  else { reseed(); setView(false); rebuild(); playBouquetGlow(); if(!_fullView)resetTopView(); } };                        //      press again → shuffle a new design (keep view in full mode)
 let _fullView=false;
 document.getElementById('fullView').onclick=()=>{ _fullView=!_fullView; document.body.classList.toggle('fullview',_fullView);
   if(_fullView){ if(selFlower||selType)deselect(); closeAllPopups(); document.getElementById('toolsTL').classList.remove('show'); }
